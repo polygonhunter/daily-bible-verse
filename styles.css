@@ -1,0 +1,38 @@
+/* Daily Bible Verse — custom callout styling.
+   The callout degrades gracefully to a default callout when the plugin
+   (and this stylesheet) is not installed. */
+
+.callout[data-callout="bible"] {
+  --callout-color: 158, 130, 60;
+  --callout-icon: lucide-book-open;
+}
+
+.callout[data-callout="bible"] .callout-title-inner {
+  font-weight: 600;
+}
+
+/* The attribution line ("— Luther 1912") is the last paragraph of the callout. */
+.callout[data-callout="bible"] .callout-content > p:last-child:not(:first-child) {
+  color: var(--text-muted);
+  font-size: var(--font-smaller);
+  margin-top: 0.25em;
+}
+
+/* Settings tab */
+.daily-bible-verse-warning {
+  border: 1px solid var(--background-modifier-error);
+  border-radius: var(--radius-s);
+  padding: var(--size-4-2) var(--size-4-3);
+  margin-bottom: var(--size-4-3);
+  color: var(--text-error);
+}
+
+.daily-bible-verse-theme-toggle {
+  border-top: none;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.daily-bible-verse-theme-toggle .setting-item-name {
+  font-size: var(--font-ui-small);
+}

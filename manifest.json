@@ -1,0 +1,10 @@
+{
+  "id": "daily-bible-verse",
+  "name": "Daily Bible Verse",
+  "version": "1.0.0",
+  "minAppVersion": "1.2.7",
+  "description": "Inserts a deterministic daily Bible verse into your daily note as a formatted callout. German, English, Spanish, French and Italian public-domain translations included.",
+  "author": "polygonhunter",
+  "authorUrl": "https://github.com/polygonhunter",
+  "isDesktopOnly": false
+}
