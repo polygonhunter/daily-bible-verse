@@ -7,6 +7,9 @@ export function sanitizeVerseText(raw: string): string {
   // Strong's numbers and footnote markers: drop tag AND content.
   s = s.replace(/<S>[^<]*<\/S>/gi, "");
   s = s.replace(/<sup>[^<]*<\/sup>/gi, "");
+  // Editorial annotations in curly braces (e.g. Darby's Psalm superscriptions
+  // "{To the chief Musician.}") are not verse text.
+  s = s.replace(/\{[^}]*\}/g, "");
   // <br> variants become newlines (renderer prefixes each line with "> ").
   s = s.replace(/<br\s*\/?>/gi, "\n");
   // Any remaining tags: keep inner text, drop markup.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyToContent, replaceMarkerCallout } from "../src/core/insert-logic";
+import { applyToContent, hasPlaceholder, replaceMarkerCallout } from "../src/core/insert-logic";
 import { MARKER, renderCallout } from "../src/core/renderer";
 
 const callout = renderCallout({
@@ -70,6 +70,63 @@ describe("applyToContent", () => {
       const twice = applyToContent(once.content, callout, pos);
       expect(twice.content).toBe(once.content);
     }
+  });
+});
+
+describe("CRLF (Windows line endings)", () => {
+  const crlfFm = "---\r\ntitle: Test\r\ntags: [daily]\r\n---\r\n";
+
+  it("detects CRLF frontmatter and inserts below it", () => {
+    const result = applyToContent(`${crlfFm}\r\n# Today\r\n`, callout, "after-frontmatter");
+    expect(result.action).toBe("inserted");
+    // The callout must come AFTER the closing ---, never above the YAML block.
+    expect(result.content.startsWith(crlfFm)).toBe(true);
+    expect(result.content.indexOf("> [!bible]")).toBeGreaterThan(result.content.indexOf("---\r\n---".slice(0, 3)));
+    expect(result.content.indexOf("> [!bible]")).toBeGreaterThan(crlfFm.length - 1);
+  });
+
+  it("replaces placeholders in CRLF content", () => {
+    const result = applyToContent(`${crlfFm}# Head\r\n{{bible-verse}}\r\n`, callout, "top");
+    expect(result.action).toBe("placeholder");
+    expect(result.content).not.toContain("{{");
+  });
+
+  it("is idempotent and bottom-insert works with CRLF", () => {
+    const once = applyToContent(`${crlfFm}body\r\n`, callout, "bottom");
+    const twice = applyToContent(once.content, callout, "bottom");
+    expect(twice.content).toBe(once.content);
+    expect(once.content).toContain("body");
+  });
+
+  it("replaceMarkerCallout keeps CRLF surroundings intact", () => {
+    const content = `${crlfFm}${callout}\n\r\n# Notes\r\n`;
+    const replaced = replaceMarkerCallout(content, callout.replace("John 3:16", "Psalm 23:1"));
+    expect(replaced).toContain("Psalm 23:1");
+    expect(replaced).toContain("# Notes");
+  });
+});
+
+describe("edge cases", () => {
+  it("frontmatter-only note without trailing newline gets its own line", () => {
+    const result = applyToContent("---\ntitle: x\n---", callout, "after-frontmatter");
+    expect(result.content).toBe(`---\ntitle: x\n---\n${callout}\n`);
+  });
+
+  it("hasPlaceholder is stateless across repeated calls (lastIndex regression)", () => {
+    const content = "note\n{{bible-verse}}\n";
+    // The old shared /g regex made a second .test() miss the match, so the
+    // command inserted at the default position AND left the placeholder.
+    expect(hasPlaceholder(content)).toBe(true);
+    expect(hasPlaceholder(content)).toBe(true);
+    const result = applyToContent(content, callout, "top");
+    expect(result.action).toBe("placeholder");
+    expect(result.content).not.toContain("{{bible-verse}}");
+  });
+
+  it("keeps $-sequences in the callout literal during placeholder replacement", () => {
+    const dollarCallout = "> [!bible] Test $& $1 $` <!--daily-bible-verse-->\n> text";
+    const result = applyToContent("a\n{{bible-verse}}\nb\n", dollarCallout, "top");
+    expect(result.content).toContain("$& $1 $`");
   });
 });
 

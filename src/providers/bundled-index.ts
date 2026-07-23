@@ -1,6 +1,6 @@
 import type { GeneratedTextsFile } from "../core/types";
-import asv from "../../data/generated/texts.asv.json";
-import diodati1885 from "../../data/generated/texts.diodati1885.json";
+import darby1890 from "../../data/generated/texts.darby1890.json";
+import diodati1649 from "../../data/generated/texts.diodati1649.json";
 import elberfelder1905 from "../../data/generated/texts.elberfelder1905.json";
 import kjv from "../../data/generated/texts.kjv.json";
 import luther1912 from "../../data/generated/texts.luther1912.json";
@@ -13,8 +13,8 @@ export const BUNDLED_TEXTS: Record<string, GeneratedTextsFile> = {
   luther1912,
   elberfelder1905,
   kjv,
-  asv,
+  darby1890,
   rva,
   segond1910,
-  diodati1885,
+  diodati1649,
 };

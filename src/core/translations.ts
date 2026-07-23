@@ -19,10 +19,10 @@ export const TRANSLATIONS: readonly TranslationMeta[] = [
   { id: "luther1912", language: "de", displayName: "Luther 1912", shortName: "Luther 1912", bebliaFile: "GermanLuther1912Bible.xml" },
   { id: "elberfelder1905", language: "de", displayName: "Elberfelder 1905", shortName: "Elberfelder 1905", bebliaFile: "GermanElber1905Bible.xml" },
   { id: "kjv", language: "en", displayName: "King James Version", shortName: "KJV", bebliaFile: "EnglishKJBible.xml" },
-  { id: "asv", language: "en", displayName: "American Standard Version (1901)", shortName: "ASV", bebliaFile: "EnglishASVBible.xml" },
+  { id: "darby1890", language: "en", displayName: "Darby Translation (1890)", shortName: "Darby 1890", bebliaFile: "EnglishDarbyBible.xml" },
   { id: "rva", language: "es", displayName: "Reina-Valera Antigua (1909)", shortName: "Reina-Valera 1909", bebliaFile: "SpanishRVESBible.xml" },
   { id: "segond1910", language: "fr", displayName: "Louis Segond 1910", shortName: "Segond 1910", bebliaFile: "FrenchBible.xml" },
-  { id: "diodati1885", language: "it", displayName: "Diodati (riveduta 1885)", shortName: "Diodati 1885", bebliaFile: "Italian1649Bible.xml" },
+  { id: "diodati1649", language: "it", displayName: "Diodati 1649", shortName: "Diodati 1649", bebliaFile: "Italian1649Bible.xml" },
 ];
 
 export const DEFAULT_TRANSLATION: Record<LanguageCode, string> = {
@@ -30,7 +30,7 @@ export const DEFAULT_TRANSLATION: Record<LanguageCode, string> = {
   en: "kjv",
   es: "rva",
   fr: "segond1910",
-  it: "diodati1885",
+  it: "diodati1649",
 };
 
 /** Raw-file base for both the build-time fetch script and the runtime

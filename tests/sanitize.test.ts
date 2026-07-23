@@ -34,6 +34,13 @@ describe("sanitizeVerseText", () => {
     expect(sanitizeVerseText("  many   spaces\t here  ")).toBe("many spaces here");
   });
 
+  it("strips curly-brace editorial annotations", () => {
+    expect(sanitizeVerseText("{To the chief Musician.} Jehovah is my shepherd")).toBe(
+      "Jehovah is my shepherd",
+    );
+    expect(sanitizeVerseText("{A Psalm of David.}")).toBe("");
+  });
+
   it("leaves clean text untouched", () => {
     const clean = "Also hat Gott die Welt geliebt, daß er seinen eingeborenen Sohn gab.";
     expect(sanitizeVerseText(clean)).toBe(clean);

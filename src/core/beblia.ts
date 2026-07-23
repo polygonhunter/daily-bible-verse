@@ -30,7 +30,9 @@ export function parseBebliaXml(xml: string): ParsedBible {
       const verse = Number(m[3]);
       if (book === 0 || chapter === 0) continue;
       const text = sanitizeVerseText(m[4]);
-      if (text.length === 0) continue;
+      // Skip separator artifacts like Darby's trailing "***" pseudo-verses —
+      // they must never become a daily verse in whole-Bible mode.
+      if (text.length === 0 || !/\p{L}/u.test(text)) continue;
       verses.set(`${book}:${chapter}:${verse}`, text);
       let chapters = index.get(book);
       if (!chapters) {

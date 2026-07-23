@@ -21,8 +21,8 @@ device, in exports, and even if you uninstall the plugin.
   in all supported translations. No API keys, no external services, works on mobile.
 - **5 languages** — German, English, Spanish, French, Italian, each with correctly
   localized book names and reference notation ("Johannes 3,16" vs. "John 3:16").
-- **Public-domain translations** — Luther 1912, Elberfelder 1905, KJV, ASV,
-  Reina-Valera Antigua (1909), Louis Segond 1910, Diodati 1885.
+- **Public-domain translations** — Luther 1912, Elberfelder 1905, KJV, Darby 1890,
+  Reina-Valera Antigua (1909), Louis Segond 1910, Diodati 1649.
 - **Randomness with a system** — a seeded shuffled-deck algorithm guarantees no repeats
   until the whole pool has been used once, then reshuffles: no short-interval repeats,
   no yearly rotation, and fully deterministic (the same day always gets the same verse,
@@ -101,10 +101,10 @@ curated pool (with a notice). Downloads can be deleted again in the settings.
 | Luther 1912 | German | Public domain |
 | Elberfelder 1905 | German | Public domain |
 | King James Version | English | Public domain¹ |
-| American Standard Version (1901) | English | Public domain |
+| Darby Translation (1890) | English | Public domain |
 | Reina-Valera Antigua (1909) | Spanish | Public domain |
 | Louis Segond 1910 | French | Public domain |
-| Diodati (riveduta 1885) | Italian | Public domain |
+| Diodati 1649 | Italian | Public domain |
 
 ¹ Crown patent restrictions apply within the United Kingdom.
 

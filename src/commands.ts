@@ -6,7 +6,7 @@ import {
   getAllDailyNotes,
   getDailyNote,
 } from "obsidian-daily-notes-interface";
-import { PLACEHOLDER_RE } from "./core/insert-logic";
+import { hasPlaceholder } from "./core/insert-logic";
 import { MARKER } from "./core/renderer";
 import { translationById } from "./core/translations";
 import { downloadTranslation } from "./downloader";
@@ -81,12 +81,11 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
         return;
       }
       const content = await plugin.app.vault.read(file);
-      PLACEHOLDER_RE.lastIndex = 0;
       if (content.includes(MARKER)) {
         new Notice("Daily Bible Verse: this note already has a verse.");
         return;
       }
-      if (!PLACEHOLDER_RE.test(content)) {
+      if (!hasPlaceholder(content)) {
         new Notice("Daily Bible Verse: no {{bible-verse}} placeholder found.");
         return;
       }

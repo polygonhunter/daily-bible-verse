@@ -145,6 +145,14 @@ export default class DailyBibleVersePlugin extends Plugin {
     this.invalidatePoolCache();
   }
 
+  /** Frees the in-memory verse maps (~5 MB each) of translations that are no
+   * longer selected — relevant on mobile when switching translations. */
+  evictUnusedDownloadedProviders(): void {
+    for (const id of [...this.downloadedProviders.keys()]) {
+      if (id !== this.settings.translationId) this.downloadedProviders.delete(id);
+    }
+  }
+
   manifestDir(): string {
     return this.manifest.dir ?? `.obsidian/plugins/${this.manifest.id}`;
   }

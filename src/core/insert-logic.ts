@@ -1,6 +1,18 @@
 import { MARKER } from "./renderer";
 
-export const PLACEHOLDER_RE = /\{\{\s*bible-verse\s*\}\}/g;
+const PLACEHOLDER_SOURCE = String.raw`\{\{\s*bible-verse\s*\}\}`;
+
+/** Stateless placeholder check — deliberately creates a fresh regex per call.
+ * A shared /g regex would carry `lastIndex` between calls and silently skip
+ * matches (a real bug this replaced). */
+export function hasPlaceholder(content: string): boolean {
+  return new RegExp(PLACEHOLDER_SOURCE).test(content);
+}
+
+function replacePlaceholders(content: string, callout: string): string {
+  // Function replacer: `$`-sequences in the callout stay literal.
+  return content.replace(new RegExp(PLACEHOLDER_SOURCE, "g"), () => callout);
+}
 
 export type InsertPosition = "after-frontmatter" | "top" | "bottom";
 
@@ -13,7 +25,7 @@ export interface InsertResult {
 }
 
 /** Pure content transform shared by all insertion triggers. Idempotent:
- * applying it twice never yields two callouts. */
+ * applying it twice never yields two callouts. Handles LF and CRLF files. */
 export function applyToContent(
   content: string,
   callout: string,
@@ -22,13 +34,8 @@ export function applyToContent(
   if (content.includes(MARKER)) {
     return { content, changed: false, action: "already-present" };
   }
-  if (PLACEHOLDER_RE.test(content)) {
-    PLACEHOLDER_RE.lastIndex = 0;
-    return {
-      content: content.replace(PLACEHOLDER_RE, callout),
-      changed: true,
-      action: "placeholder",
-    };
+  if (hasPlaceholder(content)) {
+    return { content: replacePlaceholders(content, callout), changed: true, action: "placeholder" };
   }
   return { content: insertAt(content, callout, position), changed: true, action: "inserted" };
 }
@@ -36,22 +43,27 @@ export function applyToContent(
 function insertAt(content: string, callout: string, position: InsertPosition): string {
   if (position === "bottom") {
     if (content.length === 0) return `${callout}\n`;
-    return `${content.replace(/\n*$/, "")}\n\n${callout}\n`;
+    return `${content.replace(/(?:\r?\n)*$/, "")}\n\n${callout}\n`;
   }
   const frontmatterEnd = position === "after-frontmatter" ? frontmatterEndIndex(content) : 0;
   const before = content.slice(0, frontmatterEnd);
-  const after = content.slice(frontmatterEnd).replace(/^\n*/, "");
-  const separator = after.length > 0 ? "\n" : "";
-  return `${before}${callout}\n${separator}${after}`;
+  const beforeSeparator = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
+  const after = content.slice(frontmatterEnd).replace(/^(?:\r?\n)*/, "");
+  const afterSeparator = after.length > 0 ? "\n" : "";
+  return `${before}${beforeSeparator}${callout}\n${afterSeparator}${after}`;
 }
 
 /** Index just past the closing `---` line of a leading YAML frontmatter block
- * (including its trailing newline), or 0 when there is none. */
+ * (including its trailing newline), or 0 when there is none. CRLF-safe: a
+ * Windows note starting with `---\r\n` is real frontmatter too — missing it
+ * would insert the callout above the YAML block and break its parsing. */
 function frontmatterEndIndex(content: string): number {
-  if (!content.startsWith("---\n") && content !== "---") return 0;
-  const close = /\n(---|\.\.\.)(\n|$)/.exec(content.slice(3));
+  const open = /^---\r?\n/.exec(content);
+  if (!open) return 0;
+  const rest = content.slice(open[0].length);
+  const close = /(?:^|\r?\n)(---|\.\.\.)(\r?\n|$)/.exec(rest);
   if (!close) return 0;
-  return 3 + close.index + 1 + close[1].length + (close[2] ? 1 : 0);
+  return open[0].length + close.index + close[0].length;
 }
 
 /** Replaces an existing marker callout (found via MARKER) with a new one.

@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting, type TextComponent } from "obsidian";
 import { appHasDailyNotesPluginLoaded } from "obsidian-daily-notes-interface";
 import { BOOK_PRESETS } from "./core/pool";
 import { ALL_THEMES, type LanguageCode } from "./core/types";
@@ -52,6 +52,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
           s.language = value as LanguageCode;
           s.translationId = DEFAULT_TRANSLATION[s.language];
           this.plugin.invalidatePoolCache();
+          this.plugin.evictUnusedDownloadedProviders();
           await this.plugin.savePluginData();
           this.display();
         });
@@ -65,6 +66,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
         dd.setValue(s.translationId).onChange(async (value) => {
           s.translationId = value;
           this.plugin.invalidatePoolCache();
+          this.plugin.evictUnusedDownloadedProviders();
           await this.plugin.savePluginData();
           this.display();
         });
@@ -140,29 +142,31 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
 
     new Setting(containerEl).setName("Appearance").setHeading();
 
+    let emojiField: TextComponent | null = null;
     new Setting(containerEl)
       .setName("Emoji")
-      .setDesc("Shown in the callout title. Leave empty for none.")
+      .setDesc("Shown in the callout title. Clear the field for none.")
       .addDropdown((dd) => {
-        const presets = ["📖", "✝️", "🕊️", "🙏", ""];
-        for (const p of presets) dd.addOption(p, p === "" ? "(none)" : p);
-        if (!presets.includes(s.emoji)) dd.addOption(s.emoji, s.emoji);
-        dd.setValue(s.emoji).onChange(async (value) => {
+        const presets = ["📖", "✝️", "🕊️", "🙏"];
+        dd.addOption("", "Preset…");
+        for (const p of presets) dd.addOption(p, p);
+        dd.setValue(presets.includes(s.emoji) ? s.emoji : "");
+        dd.onChange(async (value) => {
+          if (!value) return;
           s.emoji = value;
+          emojiField?.setValue(value);
           await this.plugin.savePluginData();
         });
       })
-      .addText((t) =>
-        t
-          .setPlaceholder("Custom…")
-          .setValue("")
+      .addText((t) => {
+        emojiField = t;
+        t.setPlaceholder("(none)")
+          .setValue(s.emoji)
           .onChange(async (value) => {
-            if (value.trim()) {
-              s.emoji = value.trim();
-              await this.plugin.savePluginData();
-            }
-          }),
-      );
+            s.emoji = value.trim();
+            await this.plugin.savePluginData();
+          });
+      });
 
     new Setting(containerEl)
       .setName("Header text")

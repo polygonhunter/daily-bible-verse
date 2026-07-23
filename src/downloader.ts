@@ -1,10 +1,10 @@
-import { requestUrl, type App } from "obsidian";
+import { normalizePath, requestUrl, type App } from "obsidian";
 import { parseBebliaXml } from "./core/beblia";
 import { BEBLIA_BASE_URL, type TranslationMeta } from "./core/translations";
 import type { StoredTranslation } from "./providers/downloaded-provider";
 
 export function translationFilePath(manifestDir: string, translationId: string): string {
-  return `${manifestDir}/translations/${translationId}.json`;
+  return normalizePath(`${manifestDir}/translations/${translationId}.json`);
 }
 
 /** One-time download of a full translation (~4-5 MB) for whole-Bible mode.
@@ -33,7 +33,7 @@ export async function downloadTranslation(
     ),
   };
 
-  const dir = `${manifestDir}/translations`;
+  const dir = normalizePath(`${manifestDir}/translations`);
   if (!(await app.vault.adapter.exists(dir))) {
     await app.vault.adapter.mkdir(dir);
   }

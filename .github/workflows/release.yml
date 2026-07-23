@@ -29,11 +29,11 @@ jobs:
             echo "Tag $GITHUB_REF_NAME does not match manifest version $MANIFEST_VERSION" >&2
             exit 1
           fi
-      - name: Create draft release
+      - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
-            --draft \
+            --generate-notes \
             main.js manifest.json styles.css

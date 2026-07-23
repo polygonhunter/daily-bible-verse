@@ -1,0 +1,11 @@
+{
+  "_comment": "Per-translation versification fixes: maps a curated (KJV-versified) ref to the range to read from that translation's source. An identical mapping disables the automatic leading-verse shift (used where a chapter's extra verse is at the END, e.g. German 3 John splits the final greeting).",
+  "luther1912": {
+    "64:1:2-2": "64:1:2-2",
+    "21:4:9-10": "21:4:9-10"
+  },
+  "elberfelder1905": {
+    "64:1:2-2": "64:1:2-2",
+    "21:4:9-10": "21:4:9-10"
+  }
+}

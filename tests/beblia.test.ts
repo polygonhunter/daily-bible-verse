@@ -21,6 +21,7 @@ function fixture(): string {
       <chapter number="3">
         <verse number="16">Also hat Gott die Welt geliebt &quot;so&quot;<br/>zweite Zeile</verse>
         <verse number="17"><S>123</S>Denn Gott hat seinen Sohn nicht gesandt</verse>
+        <verse number="18">***</verse>
       </chapter>
     </book>
   </testament>
@@ -40,6 +41,12 @@ describe("parseBebliaXml", () => {
     const parsed = parseBebliaXml(fixture());
     expect(parsed.index.get(1)?.size).toBe(40);
     expect(parsed.index.get(1)?.get(40)).toBe(30);
+    expect(parsed.index.get(43)?.get(3)).toBe(17);
+  });
+
+  it("skips separator artifacts like Darby's '***' pseudo-verses", () => {
+    const parsed = parseBebliaXml(fixture());
+    expect(parsed.verses.has("43:3:18")).toBe(false);
     expect(parsed.index.get(43)?.get(3)).toBe(17);
   });
 
