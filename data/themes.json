@@ -1,0 +1,10 @@
+{
+  "encouragement": { "en": "Encouragement", "de": "Ermutigung", "es": "Ánimo", "fr": "Encouragement", "it": "Incoraggiamento" },
+  "comfort": { "en": "Comfort", "de": "Trost", "es": "Consuelo", "fr": "Réconfort", "it": "Conforto" },
+  "hope": { "en": "Hope", "de": "Hoffnung", "es": "Esperanza", "fr": "Espérance", "it": "Speranza" },
+  "love": { "en": "Love", "de": "Liebe", "es": "Amor", "fr": "Amour", "it": "Amore" },
+  "wisdom": { "en": "Wisdom", "de": "Weisheit", "es": "Sabiduría", "fr": "Sagesse", "it": "Sapienza" },
+  "gratitude": { "en": "Gratitude", "de": "Dankbarkeit", "es": "Gratitud", "fr": "Gratitude", "it": "Gratitudine" },
+  "faith": { "en": "Faith", "de": "Glaube", "es": "Fe", "fr": "Foi", "it": "Fede" },
+  "peace": { "en": "Peace", "de": "Frieden", "es": "Paz", "fr": "Paix", "it": "Pace" }
+}
