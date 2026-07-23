@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Daily Bible Verse icon: an open book beneath a cross">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#faf5e6"/>
+      <stop offset="1" stop-color="#efe2bd"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c9a84c"/>
+      <stop offset="1" stop-color="#9e823c"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#bg)" stroke="#9e823c" stroke-width="6"/>
+  <g fill="url(#gold)" stroke="#6f5a26" stroke-width="5" stroke-linejoin="round">
+    <path d="M120 46 h16 v28 h26 v16 h-26 v52 h-16 v-52 h-26 v-16 h26 z"/>
+  </g>
+  <g stroke="#6f5a26" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M128 150 C106 136 76 132 46 138 L46 198 C76 192 106 196 128 210 C150 196 180 192 210 198 L210 138 C180 132 150 136 128 150 Z" fill="#fdf9ee"/>
+    <path d="M128 150 L128 210" fill="none"/>
+    <path d="M62 152 C82 149 102 152 116 160 M62 168 C82 165 102 168 116 176 M140 160 C154 152 174 149 194 152 M140 176 C154 168 174 165 194 168" fill="none" stroke-width="5" opacity="0.55"/>
+  </g>
+</svg>

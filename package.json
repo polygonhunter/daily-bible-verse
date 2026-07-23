@@ -1,7 +1,7 @@
 {
   "name": "daily-bible-verse",
   "version": "1.0.0",
-  "description": "Obsidian plugin that inserts a deterministic daily Bible verse into your daily note as a formatted callout.",
+  "description": "Obsidian plugin: a daily Bible verse in your daily note as an elegant callout — no-repeat rotation, offline, five languages.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",

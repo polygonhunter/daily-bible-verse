@@ -3,7 +3,7 @@
   "name": "Daily Bible Verse",
   "version": "1.0.0",
   "minAppVersion": "1.2.7",
-  "description": "Inserts a deterministic daily Bible verse into your daily note as a formatted callout. German, English, Spanish, French and Italian public-domain translations included.",
+  "description": "Start each day with Scripture: a daily Bible verse in your daily note as an elegant callout. Smart no-repeat rotation, offline public-domain translations in five languages, themed verse collections, and whole-Bible mode.",
   "author": "polygonhunter",
   "authorUrl": "https://github.com/polygonhunter",
   "isDesktopOnly": false

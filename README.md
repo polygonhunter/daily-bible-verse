@@ -1,8 +1,12 @@
+<p align="center">
+  <img src="assets/icon.svg" width="120" alt="Daily Bible Verse icon">
+</p>
+
 # Daily Bible Verse
 
-An [Obsidian](https://obsidian.md) plugin that inserts a **daily Bible verse** into your
-daily note as a nicely formatted callout — with a 📖 emoji, the correctly localized verse
-reference and an attribution line:
+Start each day with Scripture. This [Obsidian](https://obsidian.md) plugin adds a
+**daily Bible verse** to your daily note as an elegant callout — with a 📖 emoji, the
+correctly localized verse reference and an attribution line:
 
 ```markdown
 > [!bible] 📖 Johannes 3,16
