@@ -1,85 +1,66 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Daily Bible Verse icon: an open book beneath a glowing cross">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Daily Bible Verse icon: a glowing cross above an open book">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0.7" y2="1">
-      <stop offset="0" stop-color="#fbf6e7"/>
-      <stop offset="0.55" stop-color="#f1e3bb"/>
-      <stop offset="1" stop-color="#e0c78d"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="0.5" stop-color="#5b50e0"/>
+      <stop offset="1" stop-color="#2e2a72"/>
     </linearGradient>
-    <radialGradient id="halo" cx="0.5" cy="0.36" r="0.52">
-      <stop offset="0" stop-color="#ffedad" stop-opacity="0.95"/>
-      <stop offset="0.55" stop-color="#ffe9a8" stop-opacity="0.4"/>
-      <stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/>
+    <radialGradient id="glow" cx="0.5" cy="0.36" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.5"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="crossFace" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#eccf76"/>
-      <stop offset="0.5" stop-color="#c9a84c"/>
-      <stop offset="1" stop-color="#9c7f36"/>
+    <linearGradient id="cross" gradientUnits="userSpaceOnUse" x1="128" y1="42" x2="128" y2="146">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d8d2ff"/>
     </linearGradient>
-    <linearGradient id="cover" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#7d5c2b"/>
-      <stop offset="1" stop-color="#54401e"/>
+    <linearGradient id="pageL" gradientUnits="userSpaceOnUse" x1="128" y1="175" x2="50" y2="175">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d5cffb"/>
     </linearGradient>
-    <linearGradient id="pageL" x1="0" y1="0" x2="1" y2="0.25">
-      <stop offset="0" stop-color="#efe6cd"/>
-      <stop offset="0.75" stop-color="#fffdf5"/>
-      <stop offset="1" stop-color="#e7dabb"/>
+    <linearGradient id="pageR" gradientUnits="userSpaceOnUse" x1="128" y1="175" x2="206" y2="175">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d5cffb"/>
     </linearGradient>
-    <linearGradient id="pageR" x1="1" y1="0" x2="0" y2="0.25">
-      <stop offset="0" stop-color="#efe6cd"/>
-      <stop offset="0.75" stop-color="#fffdf5"/>
-      <stop offset="1" stop-color="#e7dabb"/>
+    <linearGradient id="fold" gradientUnits="userSpaceOnUse" x1="120" y1="0" x2="136" y2="0">
+      <stop offset="0" stop-color="#4338ca" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#4338ca" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#4338ca" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="spine" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#6f5a26" stop-opacity="0"/>
-      <stop offset="0.5" stop-color="#6f5a26" stop-opacity="0.38"/>
-      <stop offset="1" stop-color="#6f5a26" stop-opacity="0"/>
-    </linearGradient>
-    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#5d4a1f" flood-opacity="0.35"/>
+    <filter id="blur8" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="8"/>
     </filter>
-    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="5"/>
+    <filter id="blur12" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="12"/>
     </filter>
-    <clipPath id="pagesClip">
-      <path d="M128 150 C106 136 76 132 46 138 L46 196 C76 190 106 194 128 208 C150 194 180 190 210 196 L210 138 C180 132 150 136 128 150 Z"/>
-    </clipPath>
   </defs>
 
-  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#bg)" stroke="#a5873c" stroke-width="6"/>
-  <rect x="14" y="14" width="228" height="228" rx="48" fill="none" stroke="#fff7dd" stroke-width="2" opacity="0.6"/>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#bg)"/>
+  <rect x="11" y="11" width="234" height="234" rx="53" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2"/>
+  <path d="M12 100 C64 66 192 66 244 100 L244 62 A50 50 0 0 0 194 12 L62 12 A50 50 0 0 0 12 62 Z" fill="#ffffff" opacity="0.08"/>
 
-  <circle cx="128" cy="92" r="74" fill="url(#halo)"/>
-  <g opacity="0.35" stroke="#d9b968" stroke-width="4" stroke-linecap="round">
-    <path d="M128 18 V32"/>
-    <path d="M78 36 L88 46"/>
-    <path d="M178 36 L168 46"/>
-    <path d="M52 90 H68"/>
-    <path d="M204 90 H188"/>
+  <circle cx="128" cy="94" r="76" fill="url(#glow)"/>
+
+  <g filter="url(#blur8)" opacity="0.6" fill="#ffffff">
+    <rect x="118" y="44" width="20" height="100" rx="10"/>
+    <rect x="92" y="72" width="72" height="20" rx="10"/>
+  </g>
+  <g fill="url(#cross)">
+    <rect x="118" y="44" width="20" height="100" rx="10"/>
+    <rect x="92" y="72" width="72" height="20" rx="10"/>
   </g>
 
-  <g filter="url(#soft)">
-    <path d="M125 47 h16 v28 h26 v16 h-26 v50 h-16 v-50 h-26 v-16 h26 z" fill="#7e632a"/>
-    <path d="M120 42 h16 v28 h26 v16 h-26 v50 h-16 v-50 h-26 v-16 h26 z" fill="url(#crossFace)" stroke="#6f5a26" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M123.5 47 V131" stroke="#fff3c9" stroke-width="3" opacity="0.7" stroke-linecap="round"/>
-    <path d="M97 78.5 H159" stroke="#fff3c9" stroke-width="3" opacity="0.55" stroke-linecap="round"/>
-  </g>
+  <ellipse cx="128" cy="212" rx="80" ry="12" fill="#a78bfa" opacity="0.35" filter="url(#blur12)"/>
 
-  <ellipse cx="128" cy="218" rx="88" ry="9" fill="#5d4a1f" opacity="0.3" filter="url(#blur)"/>
-
-  <g filter="url(#soft)">
-    <path d="M128 152 C104 136 72 131 40 137 L40 202 C72 196 104 200 128 215 C152 200 184 196 216 202 L216 137 C184 131 152 136 128 152 Z" fill="url(#cover)" stroke="#4a3819" stroke-width="4" stroke-linejoin="round"/>
-    <path d="M46 199 C76 193 106 197 128 211 C150 197 180 193 210 199" fill="none" stroke="#f4ecd6" stroke-width="3" opacity="0.8"/>
-    <path d="M128 150 C106 136 76 132 46 138 L46 196 C76 190 106 194 128 208 Z" fill="url(#pageL)"/>
-    <path d="M128 150 C150 136 180 132 210 138 L210 196 C180 190 150 194 128 208 Z" fill="url(#pageR)"/>
-    <rect x="110" y="140" width="36" height="70" fill="url(#spine)" clip-path="url(#pagesClip)"/>
-    <path d="M128 150 C106 136 76 132 46 138 L46 196 C76 190 106 194 128 208 C150 194 180 190 210 196 L210 138 C180 132 150 136 128 150 Z" fill="none" stroke="#6f5a26" stroke-width="3.5" stroke-linejoin="round"/>
-    <g stroke="#a5873c" stroke-width="4" stroke-linecap="round" opacity="0.5" fill="none">
-      <path d="M62 154 C80 151 98 154 112 161"/>
-      <path d="M62 169 C80 166 98 169 112 176"/>
-      <path d="M62 184 C78 181 92 183 104 188"/>
-      <path d="M144 161 C158 154 176 151 194 154"/>
-      <path d="M144 176 C158 169 176 166 194 169"/>
-      <path d="M152 188 C164 183 178 181 194 184"/>
+  <g>
+    <path d="M128 156 C108 142 80 138 52 144 L52 196 C80 190 108 194 128 206 Z" fill="url(#pageL)"/>
+    <path d="M128 156 C148 142 176 138 204 144 L204 196 C176 190 148 194 128 206 Z" fill="url(#pageR)"/>
+    <rect x="120" y="152" width="16" height="56" fill="url(#fold)"/>
+    <g stroke="#6d64e8" stroke-width="4" stroke-linecap="round" opacity="0.35" fill="none">
+      <path d="M66 158 C82 155 98 158 112 164"/>
+      <path d="M66 172 C82 169 98 172 112 178"/>
+      <path d="M144 164 C158 158 174 155 190 158"/>
+      <path d="M144 178 C158 172 174 169 190 172"/>
     </g>
   </g>
 </svg>
