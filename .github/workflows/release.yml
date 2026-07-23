@@ -1,11 +1,15 @@
 name: Release
 
-# Community-plugin convention: the tag must exactly equal the version in
-# manifest.json (no "v" prefix), e.g. `git tag 1.0.0 && git push origin 1.0.0`.
+# Two triggers:
+# - Tag push (community-plugin convention: tag equals the manifest version,
+#   no "v" prefix), e.g. `git tag 0.9.0 && git push origin 0.9.0`.
+# - Manual dispatch: creates the release (and its tag) from the manifest
+#   version at the selected ref — useful when tags can't be pushed directly.
 on:
   push:
     tags:
       - "*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -22,18 +26,23 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - name: Verify tag matches manifest version
+      - name: Determine release tag
+        id: tag
         run: |
           MANIFEST_VERSION=$(node -p "require('./manifest.json').version")
-          if [ "$GITHUB_REF_NAME" != "$MANIFEST_VERSION" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match manifest version $MANIFEST_VERSION" >&2
-            exit 1
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            if [ "$GITHUB_REF_NAME" != "$MANIFEST_VERSION" ]; then
+              echo "Tag $GITHUB_REF_NAME does not match manifest version $MANIFEST_VERSION" >&2
+              exit 1
+            fi
           fi
+          echo "tag=$MANIFEST_VERSION" >> "$GITHUB_OUTPUT"
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "$GITHUB_REF_NAME" \
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            --title "${{ steps.tag.outputs.tag }}" \
+            --target "$GITHUB_SHA" \
             --generate-notes \
             main.js manifest.json styles.css
