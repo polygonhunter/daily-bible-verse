@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickForDay, seededShuffle } from "../src/core/deck";
+import { boundaryGap, pickForDay, seededShuffle } from "../src/core/deck";
 import { hashString, mulberry32 } from "../src/core/hash";
 
 const pool = Array.from({ length: 100 }, (_, i) => `43:3:${i + 1}-${i + 1}`);
@@ -90,6 +90,53 @@ describe("pickForDay", () => {
     expect(pickForDay(["1:1:1-1"], 12345, "base")).toBe("1:1:1-1");
     expect(pickForDay(pool, -5, "base")).toBe(pickForDay(pool, -5, "base"));
     expect(() => pickForDay([], 0, "base")).toThrow();
+  });
+
+  it("never repeats a verse on consecutive days — including cycle boundaries", () => {
+    for (const seed of ["a", "b", "c"]) {
+      let prev = "";
+      for (let day = 0; day < pool.length * 20; day++) {
+        const pick = pickForDay(pool, day, seed);
+        expect(pick, `seed ${seed} day ${day}`).not.toBe(prev);
+        prev = pick;
+      }
+    }
+  });
+
+  it("keeps a minimum re-occurrence distance across cycle boundaries", () => {
+    const gap = boundaryGap(pool.length);
+    expect(gap).toBeGreaterThanOrEqual(30);
+    for (const seed of ["a", "b", "c"]) {
+      const lastSeen = new Map<string, number>();
+      for (let day = 0; day < pool.length * 30; day++) {
+        const pick = pickForDay(pool, day, seed);
+        const prev = lastSeen.get(pick);
+        if (prev !== undefined) {
+          expect(day - prev, `seed ${seed} day ${day}`).toBeGreaterThan(gap);
+        }
+        lastSeen.set(pick, day);
+      }
+    }
+  });
+
+  it("boundary repair preserves exactly-once-per-cycle", () => {
+    for (let c = 0; c < 10; c++) {
+      const seen = new Set<string>();
+      for (let d = 0; d < pool.length; d++) seen.add(pickForDay(pool, c * pool.length + d, "base"));
+      expect(seen.size).toBe(pool.length);
+    }
+  });
+
+  it("small pools (theme filters) also avoid boundary repeats", () => {
+    const small = Array.from({ length: 76 }, (_, i) => `20:1:${i + 1}-${i + 1}`);
+    const gap = boundaryGap(small.length);
+    const lastSeen = new Map<string, number>();
+    for (let day = 0; day < small.length * 20; day++) {
+      const pick = pickForDay(small, day, "seed");
+      const prev = lastSeen.get(pick);
+      if (prev !== undefined) expect(day - prev).toBeGreaterThan(gap);
+      lastSeen.set(pick, day);
+    }
   });
 
   it("shuffles 31k keys quickly (whole-Bible pool)", () => {
