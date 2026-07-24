@@ -1,7 +1,7 @@
 {
 	"id": "daily-bible-verse",
 	"name": "Daily Bible Verse",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.2.7",
 	"description": "Start each day with Scripture: a daily Bible verse in your daily note as an elegant callout. Smart no-repeat rotation, offline public-domain translations in five languages, themed verse collections, and whole-Bible mode.",
 	"author": "polygonhunter",

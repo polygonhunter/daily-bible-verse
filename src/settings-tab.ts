@@ -1,4 +1,5 @@
-import { App, Notice, PluginSettingTab, Setting, type TextComponent } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import { CURATED } from "./core/curated";
 import { appHasDailyNotesPluginLoaded } from "obsidian-daily-notes-interface";
 import { BOOK_PRESETS } from "./core/pool";
 import { ALL_THEMES, type LanguageCode } from "./core/types";
@@ -74,11 +75,11 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Verse pool")
-      .setDesc("Where the daily verse is drawn from.")
+      .setDesc("Where your daily verse is drawn from. Each verse appears once before any repeats.")
       .addDropdown((dd) => {
-        dd.addOption("curated", "Curated selection (encouraging verses)");
-        dd.addOption("whole-bible", "Whole Bible (requires download)");
-        dd.addOption("books", "Specific books (requires download)");
+        dd.addOption("curated", `Curated selection — ${CURATED.verses.length} encouraging verses`);
+        dd.addOption("whole-bible", "Whole Bible — ~31,000 verses (one-time download)");
+        dd.addOption("books", "Specific books — e.g. Psalms or New Testament (one-time download)");
         dd.setValue(s.poolMode).onChange(async (value) => {
           s.poolMode = value as typeof s.poolMode;
           this.plugin.invalidatePoolCache();
@@ -104,7 +105,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
     }
     if (s.poolMode !== "curated") this.renderDownloadSection(containerEl);
 
-    const poolInfo = new Setting(containerEl).setName("Verses in pool");
+    const poolInfo = new Setting(containerEl).setName("Your current pool");
     this.poolCountEl = poolInfo.descEl;
     void this.refreshPoolCount();
 
@@ -142,31 +143,35 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
 
     new Setting(containerEl).setName("Appearance").setHeading();
 
-    let emojiField: TextComponent | null = null;
+    const EMOJI_PRESETS = ["📖", "✝️", "🕊️", "🙏"];
+    const emojiMode =
+      s.emoji === "" ? "none" : EMOJI_PRESETS.includes(s.emoji) ? s.emoji : "custom";
     new Setting(containerEl)
       .setName("Emoji")
-      .setDesc("Shown in the callout title. Clear the field for none.")
+      .setDesc("Symbol shown in front of the verse reference in the callout title.")
       .addDropdown((dd) => {
-        const presets = ["📖", "✝️", "🕊️", "🙏"];
-        dd.addOption("", "Preset…");
-        for (const p of presets) dd.addOption(p, p);
-        dd.setValue(presets.includes(s.emoji) ? s.emoji : "");
-        dd.onChange(async (value) => {
-          if (!value) return;
-          s.emoji = value;
-          emojiField?.setValue(value);
+        for (const p of EMOJI_PRESETS) dd.addOption(p, p);
+        dd.addOption("custom", "Custom…");
+        dd.addOption("none", "No emoji");
+        dd.setValue(emojiMode).onChange(async (value) => {
+          if (value === "none") s.emoji = "";
+          else if (value !== "custom") s.emoji = value;
+          // "custom" keeps the current emoji and reveals the input below.
           await this.plugin.savePluginData();
+          this.display();
         });
-      })
-      .addText((t) => {
-        emojiField = t;
-        t.setPlaceholder("(none)")
-          .setValue(s.emoji)
-          .onChange(async (value) => {
+      });
+    if (emojiMode === "custom") {
+      new Setting(containerEl)
+        .setName("Custom emoji")
+        .setDesc("Paste any emoji (or short text), e.g. 🌅 or ✨.")
+        .addText((t) =>
+          t.setValue(s.emoji).onChange(async (value) => {
             s.emoji = value.trim();
             await this.plugin.savePluginData();
-          });
-      });
+          }),
+        );
+    }
 
     new Setting(containerEl)
       .setName("Header text")
@@ -253,7 +258,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Themes")
       .setDesc(
-        "Draw only from selected themes. With nothing selected, all curated verses are used. The pool counter below updates live.",
+        `Optional filter: pick themes to draw only those verses. With nothing selected, all ${CURATED.verses.length} curated verses are used. The pool counter below updates live.`,
       );
     for (const theme of ALL_THEMES) {
       const label = THEME_LABELS[theme]?.[s.language] ?? THEME_LABELS[theme]?.en ?? theme;
