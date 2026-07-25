@@ -1,5 +1,7 @@
-import moment from "moment";
-import { Notice, type TFile } from "obsidian";
+import { moment as obsidianMoment, Notice, type TFile } from "obsidian";
+
+// Obsidian's moment export is typed as a namespace; cast once to call it.
+const moment = obsidianMoment as unknown as typeof import("moment");
 import {
   appHasDailyNotesPluginLoaded,
   createDailyNote,

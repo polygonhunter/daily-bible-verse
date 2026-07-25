@@ -1,4 +1,10 @@
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import {
+  App,
+  Notice,
+  PluginSettingTab,
+  Setting,
+  type SettingDefinitionItem,
+} from "obsidian";
 import { CURATED } from "./core/curated";
 import { appHasDailyNotesPluginLoaded } from "obsidian-daily-notes-interface";
 import { BOOK_PRESETS } from "./core/pool";
@@ -26,6 +32,59 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
     private readonly plugin: DailyBibleVersePlugin,
   ) {
     super(app, plugin);
+    this.icon = "book-open";
+  }
+
+  /** Search index for Obsidian's settings search (1.13+). Rendering still
+   * happens in display() so the tab keeps working on older app versions. */
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    const count = CURATED.verses.length;
+    return [
+      {
+        type: "group",
+        heading: "Content",
+        items: [
+          { name: "Language", desc: "Language of the verse text and the reference." },
+          { name: "Translation", desc: "All bundled translations are public domain.", aliases: ["bible version"] },
+          {
+            name: "Verse pool",
+            desc: `Curated selection (${count} encouraging verses), whole Bible, or specific books.`,
+            aliases: ["themes", "random", "download"],
+          },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Insertion",
+        items: [
+          {
+            name: "Insert automatically into new daily notes",
+            desc: "Add the verse callout when a daily note is created.",
+            aliases: ["auto insert", "daily note", "placeholder"],
+          },
+          { name: "Position", desc: "Where the callout is inserted." },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Appearance",
+        items: [
+          { name: "Emoji", desc: "Symbol shown in the callout title.", aliases: ["icon"] },
+          { name: "Header text", desc: "Optional title before the reference." },
+          { name: "Callout type", desc: "The [!type] used in the callout." },
+          { name: "Show translation name", desc: "Attribution line in the callout." },
+          { name: "Verse link template", desc: "Make the reference a link.", aliases: ["bibleserver", "url"] },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Advanced",
+        items: [
+          { name: "Reset shuffle seed", desc: "New random order for the daily verses." },
+          { name: "Clear re-roll overrides", desc: "Forget manual re-rolls." },
+        ],
+      },
+    ];
   }
 
   display(): void {

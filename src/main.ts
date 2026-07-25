@@ -1,4 +1,4 @@
-import { Notice, Plugin } from "obsidian";
+import { getLanguage, Notice, Plugin } from "obsidian";
 import { BOOK_NAMES } from "./core/booknames";
 import { CURATED } from "./core/curated";
 import { dateKeyToDayIndex, daysSinceEpochLocal, localDateKey } from "./core/date";
@@ -84,14 +84,10 @@ export default class DailyBibleVersePlugin extends Plugin {
 
   /** First run: adopt Obsidian's UI language when we support it. */
   private applyLocaleDefaults(): void {
-    try {
-      const lang = window.localStorage.getItem("language") ?? "en";
-      if ((["de", "en", "es", "fr", "it"] as const).includes(lang as LanguageCode)) {
-        this.settings.language = lang as LanguageCode;
-        this.settings.translationId = DEFAULT_TRANSLATION[lang as LanguageCode];
-      }
-    } catch {
-      // localStorage unavailable — keep English defaults.
+    const lang = getLanguage();
+    if ((["de", "en", "es", "fr", "it"] as const).includes(lang as LanguageCode)) {
+      this.settings.language = lang as LanguageCode;
+      this.settings.translationId = DEFAULT_TRANSLATION[lang as LanguageCode];
     }
   }
 
