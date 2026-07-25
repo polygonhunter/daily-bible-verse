@@ -32,7 +32,7 @@ export const DEFAULT_SETTINGS: DailyBibleVerseSettings = {
   autoInsertOnDailyNote: true,
   insertPosition: "after-frontmatter",
   calloutType: "bible",
-  emoji: "📖",
+  emoji: "",
   headerText: "",
   showTranslationName: true,
   verseLinkTemplate: "",

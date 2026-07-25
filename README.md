@@ -5,11 +5,11 @@
 # Daily Bible Verse
 
 Start each day with Scripture. This [Obsidian](https://obsidian.md) plugin adds a
-**daily Bible verse** to your daily note as an elegant callout — with a 📖 emoji, the
-correctly localized verse reference and an attribution line:
+**daily Bible verse** to your daily note as an elegant callout — with the correctly
+localized verse reference, an attribution line, and an optional emoji (📖 ✝️ 🕊️ …):
 
 ```markdown
-> [!bible] 📖 Johannes 3,16
+> [!bible] Johannes 3,16
 > Also hat Gott die Welt geliebt, daß er seinen eingeborenen Sohn gab, auf daß alle,
 > die an ihn glauben, nicht verloren werden, sondern das ewige Leben haben.
 >
