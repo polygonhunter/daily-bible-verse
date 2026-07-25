@@ -1,23 +1,17 @@
-import {
-  App,
-  Notice,
-  PluginSettingTab,
-  Setting,
-  type SettingDefinitionItem,
-} from "obsidian";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import { appHasDailyNotesPluginLoaded } from "obsidian-daily-notes-interface";
 import { CURATED } from "./core/curated";
 import { BOOK_PRESETS } from "./core/pool";
 import { ALL_THEMES, type LanguageCode } from "./core/types";
-import {
-  DEFAULT_TRANSLATION,
-  translationById,
-  translationsForLanguage,
-  TRANSLATIONS,
-} from "./core/translations";
+import { DEFAULT_TRANSLATION, translationById, translationsForLanguage } from "./core/translations";
 import { deleteDownloadedTranslation, downloadTranslation } from "./downloader";
 import type DailyBibleVersePlugin from "./main";
 import themesJson from "../data/themes.json";
+
+// NOTE: This tab deliberately uses the classic imperative display() API.
+// The declarative settings API (getSettingDefinitions) exists since Obsidian
+// 1.13, which is still insider-only — requiring it would hide plugin updates
+// from every public-release user. Revisit once 1.13 ships publicly.
 
 const LANGUAGE_NAMES: Record<LanguageCode, string> = {
   de: "Deutsch",
@@ -27,25 +21,12 @@ const LANGUAGE_NAMES: Record<LanguageCode, string> = {
   it: "Italiano",
 };
 
-const LANGUAGE_CODES = Object.keys(LANGUAGE_NAMES) as LanguageCode[];
-
 const THEME_LABELS = themesJson as Record<string, Record<string, string>>;
 
 const EMOJI_PRESETS = ["📖", "✝️", "🕊️", "🙏"];
 
-/** Keys whose change affects the visibility or content of other rows. */
-const RERENDER_KEYS = new Set([
-  "language",
-  "translationId",
-  "poolMode",
-  "bookPreset",
-  "emojiMode",
-  "autoInsertOnDailyNote",
-]);
-
-/** Fully declarative settings tab (Obsidian 1.13+): definitions drive both
- * rendering and the app-wide settings search. */
 export class DailyBibleVerseSettingTab extends PluginSettingTab {
+  private poolCountEl: HTMLElement | null = null;
   /** Keeps the custom-emoji field visible while its value still matches a
    * preset (right after the user picks "Custom…"). */
   private forceCustomEmoji = false;
@@ -55,251 +36,236 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
     private readonly plugin: DailyBibleVersePlugin,
   ) {
     super(app, plugin);
-    this.icon = "book-open";
   }
 
-  getSettingDefinitions(): SettingDefinitionItem[] {
+  display(): void {
+    const { containerEl } = this;
+    containerEl.empty();
     const s = this.plugin.settings;
-    const curatedCount = CURATED.verses.length;
 
-    return [
-      {
-        name: "Daily Notes status",
-        searchable: false,
-        visible: () => s.autoInsertOnDailyNote && !this.dailyNotesAvailable(),
-        render: (setting) => {
-          setting.settingEl.addClass("daily-bible-verse-warning");
-          setting.setDesc(
-            "⚠ The Daily Notes (or Periodic Notes) plugin is not enabled — automatic insertion is inactive. Manual commands still work.",
-          );
-        },
-      },
-      {
-        type: "group",
-        heading: "Content",
-        items: [
-          {
-            name: "Language",
-            desc: "Language of the verse text and the reference.",
-            control: { type: "dropdown", key: "language", options: LANGUAGE_NAMES },
-          },
-          ...LANGUAGE_CODES.map((lang) => ({
-            name: "Translation",
-            desc: "All bundled translations are public domain.",
-            aliases: ["bible version"],
-            visible: () => this.plugin.settings.language === lang,
-            control: {
-              type: "dropdown" as const,
-              key: "translationId",
-              options: Object.fromEntries(
-                translationsForLanguage(lang).map((t) => [t.id, t.displayName]),
-              ),
-            },
-          })),
-          {
-            name: "Verse pool",
-            desc: "Where your daily verse is drawn from. Each verse appears once before any repeats.",
-            aliases: ["random", "themes", "whole bible"],
-            control: {
-              type: "dropdown",
-              key: "poolMode",
-              options: {
-                curated: `Curated selection — ${curatedCount} encouraging verses`,
-                "whole-bible": "Whole Bible — ~31,000 verses (one-time download)",
-                books: "Specific books — e.g. Psalms or New Testament (one-time download)",
-              },
-            },
-          },
-          {
-            name: "Themes",
-            desc: `Optional filter: pick themes to draw only those verses. With nothing selected, all ${curatedCount} curated verses are used.`,
-            visible: () => this.plugin.settings.poolMode === "curated",
-          },
-          ...ALL_THEMES.map((theme) => ({
-            name: THEME_LABELS[theme]?.en ?? theme,
-            aliases: Object.values(THEME_LABELS[theme] ?? {}),
-            visible: () => this.plugin.settings.poolMode === "curated",
-            control: { type: "toggle" as const, key: `theme:${theme}` },
-          })),
-          {
-            name: "Books",
-            desc: "Draw verses only from this part of the Bible.",
-            visible: () => this.plugin.settings.poolMode === "books",
-            control: {
-              type: "dropdown",
-              key: "bookPreset",
-              options: Object.fromEntries(
-                Object.entries(BOOK_PRESETS).map(([key, preset]) => [key, preset.label]),
-              ),
-            },
-          },
-          {
-            name: "Offline data",
-            desc: "One-time translation download for whole-Bible mode.",
-            aliases: ["download"],
-            visible: () => this.plugin.settings.poolMode !== "curated",
-            render: (setting) => this.renderOfflineRow(setting),
-          },
-          {
-            name: "Your current pool",
-            searchable: false,
-            render: (setting) => {
-              void this.refreshPoolCountInto(setting.descEl);
-            },
-          },
-        ],
-      },
-      {
-        type: "group",
-        heading: "Insertion",
-        items: [
-          {
-            name: "Insert automatically into new daily notes",
-            desc: "When a daily note is created, the verse callout is added automatically. Alternatively place {{bible-verse}} in your daily note template to control the position.",
-            aliases: ["auto insert", "placeholder"],
-            control: { type: "toggle", key: "autoInsertOnDailyNote" },
-          },
-          {
-            name: "Position",
-            desc: "Where the callout is inserted when no {{bible-verse}} placeholder exists.",
-            control: {
-              type: "dropdown",
-              key: "insertPosition",
-              options: {
-                "after-frontmatter": "Top (after frontmatter)",
-                top: "Very top",
-                bottom: "Bottom",
-              },
-            },
-          },
-        ],
-      },
-      {
-        type: "group",
-        heading: "Appearance",
-        items: [
-          {
-            name: "Emoji",
-            desc: "Symbol shown in front of the verse reference in the callout title.",
-            aliases: ["icon"],
-            control: {
-              type: "dropdown",
-              key: "emojiMode",
-              options: {
-                ...Object.fromEntries(EMOJI_PRESETS.map((p) => [p, p])),
-                custom: "Custom…",
-                none: "No emoji",
-              },
-            },
-          },
-          {
-            name: "Custom emoji",
-            desc: "Paste any emoji (or short text), e.g. 🌅 or ✨.",
-            visible: () => this.emojiMode() === "custom",
-            control: { type: "text", key: "emoji", placeholder: "e.g. 🌅" },
-          },
-          {
-            name: "Header text",
-            desc: 'Optional title before the reference, e.g. "Verse of the day".',
-            control: { type: "text", key: "headerText", placeholder: "Verse of the day" },
-          },
-          {
-            name: "Callout type",
-            desc: 'The [!type] used in the callout. "bible" gets the plugin\'s book styling.',
-            control: { type: "text", key: "calloutType" },
-          },
-          {
-            name: "Show translation name",
-            desc: "Adds an attribution line like “— Luther 1912” to the callout.",
-            control: { type: "toggle", key: "showTranslationName" },
-          },
-          {
-            name: "Verse link template",
-            desc: "Optional. Makes the reference a link. Placeholders: {bookEn} {bookLocal} {chapter} {verse} {ref}. Example: https://www.bibleserver.com/LUT/{bookEn}{chapter}",
-            aliases: ["bibleserver", "url"],
-            control: { type: "text", key: "verseLinkTemplate", placeholder: "https://…" },
-          },
-        ],
-      },
-      {
-        type: "group",
-        heading: "Advanced",
-        items: [
-          {
-            name: "Reset shuffle seed",
-            desc: "Generates a new random order for the daily verses. The current and future verses change; past notes keep their text.",
-            action: () => {
-              this.plugin.settings.baseSeed = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-              this.plugin.invalidatePoolCache();
-              void this.plugin.savePluginData();
-              new Notice("Daily Bible Verse: shuffle seed reset.");
-              this.update();
-            },
-          },
-          {
-            name: "Clear re-roll overrides",
-            desc: "Forgets manual re-rolls; affected days return to their deck verse.",
-            action: () => {
-              this.plugin.overrides = {};
-              void this.plugin.savePluginData();
-              new Notice("Daily Bible Verse: overrides cleared.");
-            },
-          },
-        ],
-      },
-    ];
-  }
-
-  getControlValue(key: string): unknown {
-    const s = this.plugin.settings;
-    if (key.startsWith("theme:")) return s.selectedThemes.includes(key.slice(6));
-    if (key === "emojiMode") return this.emojiMode();
-    return (s as unknown as Record<string, unknown>)[key];
-  }
-
-  async setControlValue(key: string, value: unknown): Promise<void> {
-    const s = this.plugin.settings;
-    if (key.startsWith("theme:")) {
-      const theme = key.slice(6);
-      s.selectedThemes = value
-        ? [...new Set([...s.selectedThemes, theme])]
-        : s.selectedThemes.filter((t) => t !== theme);
-      this.plugin.invalidatePoolCache();
-    } else if (key === "emojiMode") {
-      const mode = String(value);
-      if (mode === "none") {
-        s.emoji = "";
-        this.forceCustomEmoji = false;
-      } else if (mode === "custom") {
-        this.forceCustomEmoji = true;
-      } else {
-        s.emoji = mode;
-        this.forceCustomEmoji = false;
-      }
-    } else if (key === "language") {
-      s.language = value as LanguageCode;
-      s.translationId = DEFAULT_TRANSLATION[s.language];
-      this.plugin.invalidatePoolCache();
-      this.plugin.evictUnusedDownloadedProviders();
-    } else if (key === "translationId") {
-      s.translationId = String(value);
-      this.plugin.invalidatePoolCache();
-      this.plugin.evictUnusedDownloadedProviders();
-    } else if (key === "calloutType") {
-      s.calloutType = String(value).trim() || "bible";
-    } else if (key === "emoji" || key === "headerText" || key === "verseLinkTemplate") {
-      s[key] = String(value).trim();
-    } else if (key === "poolMode" || key === "bookPreset") {
-      (s as unknown as Record<string, unknown>)[key] = value;
-      this.plugin.invalidatePoolCache();
-    } else {
-      (s as unknown as Record<string, unknown>)[key] = value;
+    if (s.autoInsertOnDailyNote && !this.dailyNotesAvailable()) {
+      const warning = containerEl.createDiv({ cls: "daily-bible-verse-warning" });
+      warning.setText(
+        "⚠ The Daily Notes (or Periodic Notes) plugin is not enabled — automatic insertion is inactive. Manual commands still work.",
+      );
     }
-    await this.plugin.savePluginData();
-    if (RERENDER_KEYS.has(key) || key.startsWith("theme:")) this.update();
+
+    // ---- Content -------------------------------------------------------
+
+    new Setting(containerEl).setName("Content").setHeading();
+
+    new Setting(containerEl)
+      .setName("Language")
+      .setDesc("Language of the verse text and the reference.")
+      .addDropdown((dd) => {
+        for (const [code, label] of Object.entries(LANGUAGE_NAMES)) dd.addOption(code, label);
+        dd.setValue(s.language).onChange(async (value) => {
+          s.language = value as LanguageCode;
+          s.translationId = DEFAULT_TRANSLATION[s.language];
+          this.plugin.invalidatePoolCache();
+          this.plugin.evictUnusedDownloadedProviders();
+          await this.plugin.savePluginData();
+          this.display();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Translation")
+      .setDesc("All bundled translations are public domain.")
+      .addDropdown((dd) => {
+        for (const t of translationsForLanguage(s.language)) dd.addOption(t.id, t.displayName);
+        dd.setValue(s.translationId).onChange(async (value) => {
+          s.translationId = value;
+          this.plugin.invalidatePoolCache();
+          this.plugin.evictUnusedDownloadedProviders();
+          await this.plugin.savePluginData();
+          this.display();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Verse pool")
+      .setDesc("Where your daily verse is drawn from. Each verse appears once before any repeats.")
+      .addDropdown((dd) => {
+        dd.addOption("curated", `Curated selection — ${CURATED.verses.length} encouraging verses`);
+        dd.addOption("whole-bible", "Whole Bible — ~31,000 verses (one-time download)");
+        dd.addOption("books", "Specific books — e.g. Psalms or New Testament (one-time download)");
+        dd.setValue(s.poolMode).onChange(async (value) => {
+          s.poolMode = value as typeof s.poolMode;
+          this.plugin.invalidatePoolCache();
+          await this.plugin.savePluginData();
+          this.display();
+        });
+      });
+
+    if (s.poolMode === "curated") this.renderThemeSection(containerEl);
+    if (s.poolMode === "books") {
+      new Setting(containerEl)
+        .setName("Books")
+        .setDesc("Draw verses only from this part of the Bible.")
+        .addDropdown((dd) => {
+          for (const [key, preset] of Object.entries(BOOK_PRESETS)) dd.addOption(key, preset.label);
+          dd.setValue(s.bookPreset).onChange(async (value) => {
+            s.bookPreset = value;
+            this.plugin.invalidatePoolCache();
+            await this.plugin.savePluginData();
+            void this.refreshPoolCount();
+          });
+        });
+    }
+    if (s.poolMode !== "curated") this.renderDownloadSection(containerEl);
+
+    const poolInfo = new Setting(containerEl).setName("Your current pool");
+    this.poolCountEl = poolInfo.descEl;
+    void this.refreshPoolCount();
+
+    // ---- Insertion -----------------------------------------------------
+
+    new Setting(containerEl).setName("Insertion").setHeading();
+
+    new Setting(containerEl)
+      .setName("Insert automatically into new daily notes")
+      .setDesc(
+        "When a daily note is created, the verse callout is added automatically. Alternatively place {{bible-verse}} in your daily note template to control the position.",
+      )
+      .addToggle((t) =>
+        t.setValue(s.autoInsertOnDailyNote).onChange(async (value) => {
+          s.autoInsertOnDailyNote = value;
+          await this.plugin.savePluginData();
+          this.display();
+        }),
+      );
+
+    new Setting(containerEl)
+      .setName("Position")
+      .setDesc("Where the callout is inserted when no {{bible-verse}} placeholder exists.")
+      .addDropdown((dd) => {
+        dd.addOption("after-frontmatter", "Top (after frontmatter)");
+        dd.addOption("top", "Very top");
+        dd.addOption("bottom", "Bottom");
+        dd.setValue(s.insertPosition).onChange(async (value) => {
+          s.insertPosition = value as typeof s.insertPosition;
+          await this.plugin.savePluginData();
+        });
+      });
+
+    // ---- Appearance ----------------------------------------------------
+
+    new Setting(containerEl).setName("Appearance").setHeading();
+
+    const emojiMode = this.emojiMode();
+    new Setting(containerEl)
+      .setName("Emoji")
+      .setDesc("Symbol shown in front of the verse reference in the callout title.")
+      .addDropdown((dd) => {
+        for (const p of EMOJI_PRESETS) dd.addOption(p, p);
+        dd.addOption("custom", "Custom…");
+        dd.addOption("none", "No emoji");
+        dd.setValue(emojiMode).onChange(async (value) => {
+          if (value === "none") {
+            s.emoji = "";
+            this.forceCustomEmoji = false;
+          } else if (value === "custom") {
+            this.forceCustomEmoji = true;
+          } else {
+            s.emoji = value;
+            this.forceCustomEmoji = false;
+          }
+          await this.plugin.savePluginData();
+          this.display();
+        });
+      });
+    if (emojiMode === "custom") {
+      new Setting(containerEl)
+        .setName("Custom emoji")
+        .setDesc("Paste any emoji (or short text), e.g. 🌅 or ✨.")
+        .addText((t) =>
+          t.setValue(s.emoji).onChange(async (value) => {
+            s.emoji = value.trim();
+            await this.plugin.savePluginData();
+          }),
+        );
+    }
+
+    new Setting(containerEl)
+      .setName("Header text")
+      .setDesc('Optional title before the reference, e.g. "Verse of the day".')
+      .addText((t) =>
+        t
+          .setPlaceholder("Verse of the day")
+          .setValue(s.headerText)
+          .onChange(async (value) => {
+            s.headerText = value.trim();
+            await this.plugin.savePluginData();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName("Callout type")
+      .setDesc('The [!type] used in the callout. "bible" gets the plugin\'s book styling.')
+      .addText((t) =>
+        t.setValue(s.calloutType).onChange(async (value) => {
+          s.calloutType = value.trim() || "bible";
+          await this.plugin.savePluginData();
+        }),
+      );
+
+    new Setting(containerEl)
+      .setName("Show translation name")
+      .setDesc("Adds an attribution line like “— Luther 1912” to the callout.")
+      .addToggle((t) =>
+        t.setValue(s.showTranslationName).onChange(async (value) => {
+          s.showTranslationName = value;
+          await this.plugin.savePluginData();
+        }),
+      );
+
+    new Setting(containerEl)
+      .setName("Verse link template")
+      .setDesc(
+        "Optional. Makes the reference a link. Placeholders: {bookEn} {bookLocal} {chapter} {verse} {ref}. Example: https://www.bibleserver.com/LUT/{bookEn}{chapter}",
+      )
+      .addText((t) =>
+        t
+          .setPlaceholder("https://…")
+          .setValue(s.verseLinkTemplate)
+          .onChange(async (value) => {
+            s.verseLinkTemplate = value.trim();
+            await this.plugin.savePluginData();
+          }),
+      );
+
+    // ---- Advanced ------------------------------------------------------
+
+    new Setting(containerEl).setName("Advanced").setHeading();
+
+    new Setting(containerEl)
+      .setName("Reset shuffle seed")
+      .setDesc(
+        "Generates a new random order for the daily verses. The current and future verses change; past notes keep their text.",
+      )
+      .addButton((b) =>
+        b.setButtonText("Reset").onClick(async () => {
+          this.plugin.settings.baseSeed = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+          this.plugin.invalidatePoolCache();
+          await this.plugin.savePluginData();
+          new Notice("Daily Bible Verse: shuffle seed reset.");
+        }),
+      );
+
+    new Setting(containerEl)
+      .setName("Clear re-roll overrides")
+      .setDesc("Forgets manual re-rolls; affected days return to their deck verse.")
+      .addButton((b) =>
+        b.setButtonText("Clear").onClick(async () => {
+          this.plugin.overrides = {};
+          await this.plugin.savePluginData();
+          new Notice("Daily Bible Verse: overrides cleared.");
+        }),
+      );
   }
 
-  // ---- dynamic rows ------------------------------------------------------
+  // ---- sections --------------------------------------------------------
 
   private emojiMode(): string {
     const emoji = this.plugin.settings.emoji;
@@ -308,15 +274,42 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
     return EMOJI_PRESETS.includes(emoji) ? emoji : "custom";
   }
 
-  private renderOfflineRow(setting: Setting): void {
+  private renderThemeSection(containerEl: HTMLElement): void {
     const s = this.plugin.settings;
-    const meta = translationById(s.translationId) ?? TRANSLATIONS[0];
+    new Setting(containerEl)
+      .setName("Themes")
+      .setDesc(
+        `Optional filter: pick themes to draw only those verses. With nothing selected, all ${CURATED.verses.length} curated verses are used. The pool counter below updates live.`,
+      );
+    for (const theme of ALL_THEMES) {
+      const label = THEME_LABELS[theme]?.[s.language] ?? THEME_LABELS[theme]?.en ?? theme;
+      new Setting(containerEl)
+        .setName(label)
+        .setClass("daily-bible-verse-theme-toggle")
+        .addToggle((t) =>
+          t.setValue(s.selectedThemes.includes(theme)).onChange(async (value) => {
+            s.selectedThemes = value
+              ? [...s.selectedThemes, theme]
+              : s.selectedThemes.filter((x) => x !== theme);
+            this.plugin.invalidatePoolCache();
+            await this.plugin.savePluginData();
+            void this.refreshPoolCount();
+          }),
+        );
+    }
+  }
+
+  private renderDownloadSection(containerEl: HTMLElement): void {
+    const s = this.plugin.settings;
+    const meta = translationById(s.translationId);
     const downloaded = this.plugin.downloadedTranslations[s.translationId];
-    setting.setDesc(
-      downloaded
-        ? `${meta.displayName}: downloaded (${downloaded.verseCount.toLocaleString()} verses, ${(downloaded.sizeBytes / 1024 / 1024).toFixed(1)} MB).`
-        : `${meta.displayName}: not downloaded yet. Whole-Bible mode needs a one-time download (~4-5 MB); until then the curated pool is used.`,
-    );
+    const setting = new Setting(containerEl)
+      .setName("Offline data")
+      .setDesc(
+        downloaded
+          ? `${meta?.displayName ?? s.translationId}: downloaded (${downloaded.verseCount.toLocaleString()} verses, ${(downloaded.sizeBytes / 1024 / 1024).toFixed(1)} MB).`
+          : `${meta?.displayName ?? s.translationId}: not downloaded yet. Whole-Bible mode needs a one-time download (~4-5 MB); until then the curated pool is used.`,
+      );
     if (downloaded) {
       setting.addButton((b) =>
         b.setButtonText("Delete").onClick(async () => {
@@ -324,7 +317,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
           delete this.plugin.downloadedTranslations[s.translationId];
           this.plugin.resetDownloadedProvider(s.translationId);
           await this.plugin.savePluginData();
-          this.update();
+          this.display();
         }),
       );
     } else {
@@ -333,6 +326,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
           .setButtonText("Download now")
           .setCta()
           .onClick(async () => {
+            if (!meta) return;
             b.setButtonText("Downloading…").setDisabled(true);
             try {
               const result = await downloadTranslation(this.app, this.plugin.manifestDir(), meta);
@@ -347,13 +341,14 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
               console.error("Daily Bible Verse: download failed", e);
               new Notice("Daily Bible Verse: download failed — check your internet connection.");
             }
-            this.update();
+            this.display();
           }),
       );
     }
   }
 
-  private async refreshPoolCountInto(el: HTMLElement): Promise<void> {
+  private async refreshPoolCount(): Promise<void> {
+    if (!this.poolCountEl) return;
     const info = await this.plugin.getPoolInfo();
     const years = info.keys.length / 365;
     const cycle =
@@ -369,7 +364,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
     if (info.keys.length < 30) {
       text += " ⚠ Very small pool — consider selecting more themes.";
     }
-    el.setText(text);
+    this.poolCountEl.setText(text);
   }
 
   private dailyNotesAvailable(): boolean {
