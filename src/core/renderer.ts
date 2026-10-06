@@ -19,6 +19,15 @@ export interface RenderInput {
   headerText: string;
 }
 
+/** Validates a user-entered callout type. Returns the trimmed type, "" for an
+ * empty input (= default "bible"), or null when it contains characters that
+ * would break the `> [!type]` syntax (spaces, brackets, …). */
+export function normalizeCalloutType(input: string): string | null {
+  const t = input.trim();
+  if (t === "") return "";
+  return /^[a-z0-9-]+$/i.test(t) ? t : null;
+}
+
 /** Emits the static markdown callout that gets written into notes. */
 export function renderCallout(input: RenderInput): string {
   const refPart = input.link ? `[${input.reference}](${input.link})` : input.reference;

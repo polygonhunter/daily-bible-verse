@@ -1,6 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import { appHasDailyNotesPluginLoaded } from "obsidian-daily-notes-interface";
 import { CURATED } from "./core/curated";
+import { normalizeCalloutType } from "./core/renderer";
 import { BOOK_PRESETS } from "./core/pool";
 import { ALL_THEMES, type LanguageCode } from "./core/types";
 import { DEFAULT_TRANSLATION, translationById, translationsForLanguage } from "./core/translations";
@@ -202,12 +203,18 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Callout type")
-      .setDesc('The [!type] used in the callout. "bible" gets the plugin\'s book styling.')
+      .setDesc('The [!type] used in the callout (letters, digits, dashes). Empty or "bible" gets the plugin\'s book styling.')
       .addText((t) =>
-        t.setValue(s.calloutType).onChange(async (value) => {
-          s.calloutType = value.trim() || "bible";
-          await this.plugin.savePluginData();
-        }),
+        t
+          .setPlaceholder("bible")
+          .setValue(s.calloutType)
+          .onChange(async (value) => {
+            const type = normalizeCalloutType(value);
+            t.inputEl.toggleClass("daily-bible-verse-invalid", type === null);
+            if (type === null) return; // keep the last valid value
+            s.calloutType = type;
+            await this.plugin.savePluginData();
+          }),
       );
 
     new Setting(containerEl)

@@ -36,3 +36,7 @@
 .daily-bible-verse-theme-toggle .setting-item-name {
   font-size: var(--font-ui-small);
 }
+
+.daily-bible-verse-invalid {
+  border-color: var(--background-modifier-error) !important;
+}

@@ -5,7 +5,7 @@ import { CURATED } from "./core/curated";
 import { dateKeyToDayIndex, daysSinceEpochLocal, localDateKey } from "./core/date";
 import { BOOK_PRESETS, buildCuratedPool, buildWholeBiblePool } from "./core/pool";
 import { formatReference, parseRefKey } from "./core/reference";
-import { renderCallout } from "./core/renderer";
+import { normalizeCalloutType, renderCallout } from "./core/renderer";
 import { rerollRefForDay, selectRefForDay, type DayOverride } from "./core/select";
 import {
   DEFAULT_TRANSLATION,
@@ -89,7 +89,7 @@ export default class DailyBibleVersePlugin extends Plugin {
   /** First run: adopt Obsidian's UI language when we support it. */
   private applyLocaleDefaults(): void {
     const lang = getLanguage();
-    if ((["de", "en", "es", "fr", "it"] as const).includes(lang as LanguageCode)) {
+    if (Object.prototype.hasOwnProperty.call(DEFAULT_TRANSLATION, lang)) {
       this.settings.language = lang as LanguageCode;
       this.settings.translationId = DEFAULT_TRANSLATION[lang as LanguageCode];
     }
@@ -132,8 +132,7 @@ export default class DailyBibleVersePlugin extends Plugin {
   getDownloadedProvider(translationId: string): DownloadedProvider {
     let provider = this.downloadedProviders.get(translationId);
     if (!provider) {
-      const dir = this.manifest.dir ?? `.obsidian/plugins/${this.manifest.id}`;
-      provider = new DownloadedProvider(this.app, translationFilePath(dir, translationId), translationId);
+      provider = new DownloadedProvider(this.app, translationFilePath(this.manifestDir(), translationId), translationId);
       this.downloadedProviders.set(translationId, provider);
     }
     return provider;
@@ -154,7 +153,7 @@ export default class DailyBibleVersePlugin extends Plugin {
   }
 
   manifestDir(): string {
-    return this.manifest.dir ?? `.obsidian/plugins/${this.manifest.id}`;
+    return this.manifest.dir ?? `${this.app.vault.configDir}/plugins/${this.manifest.id}`;
   }
 
   async getPoolInfo(): Promise<PoolInfo> {
@@ -238,7 +237,7 @@ export default class DailyBibleVersePlugin extends Plugin {
       text,
       translationShortName: s.showTranslationName ? this.currentTranslation().shortName : undefined,
       link: this.buildLink(range, reference),
-      calloutType: s.calloutType || "bible",
+      calloutType: normalizeCalloutType(s.calloutType) || "bible",
       emoji: s.emoji,
       headerText: s.headerText,
     });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MARKER, renderCallout } from "../src/core/renderer";
+import { MARKER, normalizeCalloutType, renderCallout } from "../src/core/renderer";
 
 const base = {
   reference: "Johannes 3,16",
@@ -42,5 +42,19 @@ describe("renderCallout", () => {
 
   it("uses the configured callout type", () => {
     expect(renderCallout({ ...base, calloutType: "quote" }).startsWith("> [!quote]")).toBe(true);
+  });
+});
+
+describe("normalizeCalloutType", () => {
+  it("accepts simple types and trims", () => {
+    expect(normalizeCalloutType(" quote ")).toBe("quote");
+    expect(normalizeCalloutType("my-Type2")).toBe("my-Type2");
+    expect(normalizeCalloutType("")).toBe("");
+  });
+
+  it("rejects types that break the callout syntax", () => {
+    expect(normalizeCalloutType("bad type")).toBeNull();
+    expect(normalizeCalloutType("x]")).toBeNull();
+    expect(normalizeCalloutType("a|b")).toBeNull();
   });
 });
