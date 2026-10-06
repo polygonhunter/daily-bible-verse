@@ -7,6 +7,17 @@
   --callout-icon: lucide-book-open;
 }
 
+/* Per-theme tone so the callout title meets WCAG AA contrast (4.5:1) on the
+   default light and dark backgrounds; the base value above stays the
+   fallback for themes without these classes. */
+.theme-light .callout[data-callout="bible"] {
+  --callout-color: 128, 100, 30;
+}
+
+.theme-dark .callout[data-callout="bible"] {
+  --callout-color: 196, 164, 92;
+}
+
 .callout[data-callout="bible"] .callout-title-inner {
   font-weight: 600;
 }
