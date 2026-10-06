@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import { App, debounce, Notice, PluginSettingTab, Setting } from "obsidian";
 import { appHasDailyNotesPluginLoaded } from "obsidian-daily-notes-interface";
 import { CURATED } from "./core/curated";
 import { newSeed } from "./core/hash";
@@ -32,12 +32,38 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
   /** Keeps the custom-emoji field visible while its value still matches a
    * preset (right after the user picks "Custom…"). */
   private forceCustomEmoji = false;
+  /** Text fields save debounced instead of on every keystroke (each save
+   * rewrites data.json and triggers a sync). */
+  private pendingSave = false;
+  private readonly debouncedSave = debounce(
+    () => {
+      this.pendingSave = false;
+      void this.plugin.savePluginData();
+    },
+    400,
+    true,
+  );
 
   constructor(
     app: App,
     private readonly plugin: DailyBibleVersePlugin,
   ) {
     super(app, plugin);
+  }
+
+  private queueSave(): void {
+    this.pendingSave = true;
+    this.debouncedSave();
+  }
+
+  hide(): void {
+    this.debouncedSave.cancel();
+    if (this.pendingSave) {
+      this.pendingSave = false;
+      void this.plugin.savePluginData();
+    }
+    this.poolCountEl = null;
+    super.hide();
   }
 
   display(): void {
@@ -182,9 +208,9 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
         .setName("Custom emoji")
         .setDesc("Paste any emoji (or short text), e.g. 🌅 or ✨.")
         .addText((t) =>
-          t.setValue(s.emoji).onChange(async (value) => {
+          t.setValue(s.emoji).onChange((value) => {
             s.emoji = value.trim();
-            await this.plugin.savePluginData();
+            this.queueSave();
           }),
         );
     }
@@ -196,9 +222,9 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
         t
           .setPlaceholder("Verse of the day")
           .setValue(s.headerText)
-          .onChange(async (value) => {
+          .onChange((value) => {
             s.headerText = value.trim();
-            await this.plugin.savePluginData();
+            this.queueSave();
           }),
       );
 
@@ -209,12 +235,12 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
         t
           .setPlaceholder("bible")
           .setValue(s.calloutType)
-          .onChange(async (value) => {
+          .onChange((value) => {
             const type = normalizeCalloutType(value);
             t.inputEl.toggleClass("daily-bible-verse-invalid", type === null);
             if (type === null) return; // keep the last valid value
             s.calloutType = type;
-            await this.plugin.savePluginData();
+            this.queueSave();
           }),
       );
 
@@ -237,9 +263,9 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
         t
           .setPlaceholder("https://…")
           .setValue(s.verseLinkTemplate)
-          .onChange(async (value) => {
+          .onChange((value) => {
             s.verseLinkTemplate = value.trim();
-            await this.plugin.savePluginData();
+            this.queueSave();
           }),
       );
 
