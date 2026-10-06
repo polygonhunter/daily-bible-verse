@@ -66,6 +66,7 @@ export default class DailyBibleVersePlugin extends Plugin {
   downloadedTranslations: Record<string, DownloadedTranslationMeta> = {};
 
   private downloadedProviders: Map<string, DownloadedProvider> = new Map();
+  private bundledProviders: Map<string, BundledProvider> = new Map();
   private poolCache: { key: string; info: PoolInfo } | null = null;
   private poolPromise: { key: string; promise: Promise<PoolInfo> } | null = null;
   private idleReleaseTimer: number | null = null;
@@ -309,7 +310,13 @@ export default class DailyBibleVersePlugin extends Plugin {
     if (info.source === "downloaded") {
       return this.getDownloadedProvider(this.settings.translationId);
     }
-    return new BundledProvider(this.currentTranslation().id);
+    const id = this.currentTranslation().id;
+    let provider = this.bundledProviders.get(id);
+    if (!provider) {
+      provider = new BundledProvider(id);
+      this.bundledProviders.set(id, provider);
+    }
+    return provider;
   }
 
   // ---- verse resolution -------------------------------------------------
