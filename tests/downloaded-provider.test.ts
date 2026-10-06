@@ -17,12 +17,19 @@ const stored: StoredTranslation = {
   index: { "43": { "3": 17 }, "19": { "23": 2 } },
 };
 
-function makeProvider(available = true, data: StoredTranslation = stored): DownloadedProvider {
+function makeProvider(
+  available = true,
+  data: StoredTranslation = stored,
+  counter = { reads: 0 },
+): DownloadedProvider {
   const fakeApp = {
     vault: {
       adapter: {
         exists: async () => available,
-        read: async () => JSON.stringify(data),
+        read: async () => {
+          counter.reads++;
+          return JSON.stringify(data);
+        },
       },
     },
   };
@@ -53,5 +60,42 @@ describe("DownloadedProvider", () => {
   it("rejects corrupt files", async () => {
     const bad = { ...stored, translationId: "other" };
     await expect(makeProvider(true, bad).getText("43:3:16-16")).rejects.toThrow(/Corrupt/);
+  });
+
+  it("parallel lookups share a single read + parse", async () => {
+    const counter = { reads: 0 };
+    const p = makeProvider(true, stored, counter);
+    const results = await Promise.all([p.getText("43:3:16-16"), p.getText("19:23:1-1"), p.getIndex()]);
+    expect(results[0]).toBe("Also hat Gott die Welt geliebt.");
+    expect(results[1]).toBe("Der HERR ist mein Hirte.");
+    expect(counter.reads).toBe(1);
+  });
+
+  it("release() frees the texts and the next lookup reloads", async () => {
+    const counter = { reads: 0 };
+    const p = makeProvider(true, stored, counter);
+    await p.getText("43:3:16-16");
+    expect(p.isLoaded).toBe(true);
+    p.release();
+    expect(p.isLoaded).toBe(false);
+    expect(await p.getText("43:3:17-17")).toBe("Denn Gott hat seinen Sohn nicht gesandt.");
+    expect(counter.reads).toBe(2);
+  });
+
+  it("does not resolve inherited object keys as verses", async () => {
+    expect(await makeProvider().getText("1:1:1-1")).toBeNull();
+    const p = makeProvider();
+    // "constructor" etc. can never be produced by parseRefKey, but the lookup
+    // must rely on own properties only.
+    expect(await p.getText("43:3:18-18")).toBeNull();
+  });
+
+  it("fromStored serves texts without reading the file", async () => {
+    const counter = { reads: 0 };
+    const fakeApp = { vault: { adapter: { exists: async () => true, read: async () => { counter.reads++; return ""; } } } };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = DownloadedProvider.fromStored(fakeApp as any, "x.json", stored);
+    expect(await p.getText("19:23:1-2")).toBe("Der HERR ist mein Hirte. Er weidet mich.");
+    expect(counter.reads).toBe(0);
   });
 });

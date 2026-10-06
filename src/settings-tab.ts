@@ -121,6 +121,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
         dd.setValue(s.poolMode).onChange(async (value) => {
           s.poolMode = value as typeof s.poolMode;
           this.plugin.invalidatePoolCache();
+          this.plugin.evictUnusedDownloadedProviders();
           await this.plugin.savePluginData();
           this.display();
         });

@@ -51,6 +51,8 @@ interface PoolInfo {
 }
 
 const OVERRIDE_RETENTION_DAYS = 60;
+/** Downloaded texts (~5-10 MB in memory) are freed after this idle time. */
+const PROVIDER_IDLE_RELEASE_MS = 120_000;
 
 // Obsidian's moment export is typed as a namespace; cast once to call it.
 const moment = obsidianMoment as unknown as typeof import("moment");
@@ -62,12 +64,19 @@ export default class DailyBibleVersePlugin extends Plugin {
 
   private downloadedProviders: Map<string, DownloadedProvider> = new Map();
   private poolCache: { key: string; info: PoolInfo } | null = null;
+  private poolPromise: { key: string; promise: Promise<PoolInfo> } | null = null;
+  private idleReleaseTimer: number | null = null;
 
   async onload(): Promise<void> {
     await this.loadPluginData();
     registerCommands(this);
     new DailyNoteWatcher(this).start();
     this.addSettingTab(new DailyBibleVerseSettingTab(this.app, this));
+  }
+
+  onunload(): void {
+    if (this.idleReleaseTimer !== null) window.clearTimeout(this.idleReleaseTimer);
+    this.idleReleaseTimer = null;
   }
 
   // ---- persistence ------------------------------------------------------
@@ -144,6 +153,17 @@ export default class DailyBibleVersePlugin extends Plugin {
 
   invalidatePoolCache(): void {
     this.poolCache = null;
+    this.poolPromise = null;
+  }
+
+  /** (Re)starts the idle timer that frees the downloaded verse texts. The
+   * pool keys stay cached, so a later render only reloads the text file. */
+  private scheduleIdleRelease(): void {
+    if (this.idleReleaseTimer !== null) window.clearTimeout(this.idleReleaseTimer);
+    this.idleReleaseTimer = window.setTimeout(() => {
+      this.idleReleaseTimer = null;
+      for (const provider of this.downloadedProviders.values()) provider.release();
+    }, PROVIDER_IDLE_RELEASE_MS);
   }
 
   currentTranslation(): TranslationMeta {
@@ -170,10 +190,12 @@ export default class DailyBibleVersePlugin extends Plugin {
   }
 
   /** Frees the in-memory verse maps (~5 MB each) of translations that are no
-   * longer selected — relevant on mobile when switching translations. */
+   * longer selected — relevant on mobile when switching translations. In
+   * curated mode no downloaded provider is needed at all. */
   evictUnusedDownloadedProviders(): void {
+    const keep = this.settings.poolMode === "curated" ? null : this.settings.translationId;
     for (const id of [...this.downloadedProviders.keys()]) {
-      if (id !== this.settings.translationId) this.downloadedProviders.delete(id);
+      if (id !== keep) this.downloadedProviders.delete(id);
     }
   }
 
@@ -191,12 +213,34 @@ export default class DailyBibleVersePlugin extends Plugin {
       Object.keys(this.downloadedTranslations),
     ]);
     if (this.poolCache?.key === cacheKey) return this.poolCache.info;
+    // Parallel callers (watcher + settings tab + command) share one build.
+    if (this.poolPromise?.key === cacheKey) return this.poolPromise.promise;
 
+    const promise = this.buildPoolInfo().then(
+      (info) => {
+        if (this.poolPromise?.promise === promise) {
+          this.poolPromise = null;
+          this.poolCache = { key: cacheKey, info };
+        }
+        return info;
+      },
+      (e: unknown) => {
+        if (this.poolPromise?.promise === promise) this.poolPromise = null;
+        throw e;
+      },
+    );
+    this.poolPromise = { key: cacheKey, promise };
+    return promise;
+  }
+
+  private async buildPoolInfo(): Promise<PoolInfo> {
+    const s = this.settings;
+    const { poolMode, translationId, bookPreset } = s;
     let info: PoolInfo;
-    if (s.poolMode === "curated") {
+    if (poolMode === "curated") {
       info = { keys: this.curatedKeys(), source: "curated", usedFallback: false };
     } else {
-      const index = await this.getDownloadedProvider(s.translationId)
+      const index = await this.getDownloadedProvider(translationId)
         .getIndex()
         .catch((e) => {
           console.warn("Daily Bible Verse: downloaded translation is unreadable — using the curated pool", e);
@@ -205,7 +249,8 @@ export default class DailyBibleVersePlugin extends Plugin {
       if (!index) {
         info = { keys: this.curatedKeys(), source: "curated", usedFallback: true };
       } else {
-        const books = s.poolMode === "books" ? (BOOK_PRESETS[s.bookPreset]?.books ?? []) : [];
+        this.scheduleIdleRelease();
+        const books = poolMode === "books" ? (BOOK_PRESETS[bookPreset]?.books ?? []) : [];
         info = { keys: buildWholeBiblePool(index, books), source: "downloaded", usedFallback: false };
       }
     }
@@ -213,7 +258,6 @@ export default class DailyBibleVersePlugin extends Plugin {
       // Empty theme selection result — fall back to the full curated pool.
       info = { keys: buildCuratedPool(CURATED.verses, []), source: "curated", usedFallback: true };
     }
-    this.poolCache = { key: cacheKey, info };
     return info;
   }
 
@@ -248,6 +292,7 @@ export default class DailyBibleVersePlugin extends Plugin {
         text = await provider.getText(refKey);
       }
     }
+    if (pool.source === "downloaded") this.scheduleIdleRelease();
     if (text === null) throw new Error("Daily Bible Verse: could not resolve a verse text");
 
     return { ...this.renderVerse(refKey, text), usedFallbackPool: pool.usedFallback };
