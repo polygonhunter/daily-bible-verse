@@ -283,8 +283,8 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
       )
       .addButton((b) =>
         b.setButtonText("Reset").onClick(async () => {
+          // No pool rebuild needed: the deck cache is keyed by seed.
           this.plugin.settings.baseSeed = newSeed();
-          this.plugin.invalidatePoolCache();
           await this.plugin.savePluginData();
           new Notice("Daily Bible Verse: shuffle seed reset.");
         }),
