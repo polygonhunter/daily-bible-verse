@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { BOOK_PRESETS, buildCuratedPool, buildWholeBiblePool } from "../src/core/pool";
+import {
+  BOOK_PRESETS,
+  bookVerseCountsFromIndex,
+  buildCuratedPool,
+  buildWholeBiblePool,
+  poolSizeFromCounts,
+} from "../src/core/pool";
 import type { CuratedRef, TranslationIndex } from "../src/core/types";
 import curated from "../data/curated-refs.json";
 
@@ -59,5 +65,22 @@ describe("curated-refs.json (bundled data)", () => {
       const pool = buildCuratedPool(curated.verses as CuratedRef[], [theme]);
       expect(pool.length, theme).toBeGreaterThanOrEqual(30);
     }
+  });
+});
+
+describe("poolSizeFromCounts", () => {
+  it("matches the size of the enumerated whole-Bible pool", () => {
+    const stored = { "1": { "1": 31, "2": 25 }, "19": { "23": 6 }, "43": { "3": 36 } };
+    const index: TranslationIndex = new Map(
+      Object.entries(stored).map(([b, ch]) => [
+        Number(b),
+        new Map(Object.entries(ch).map(([c, n]) => [Number(c), n])),
+      ]),
+    );
+    const counts = bookVerseCountsFromIndex(stored);
+    expect(counts).toEqual({ "1": 56, "19": 6, "43": 36 });
+    expect(poolSizeFromCounts(counts, [])).toBe(buildWholeBiblePool(index, []).length);
+    expect(poolSizeFromCounts(counts, [19, 43])).toBe(buildWholeBiblePool(index, [19, 43]).length);
+    expect(poolSizeFromCounts(counts, [2])).toBe(0);
   });
 });

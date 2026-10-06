@@ -3,7 +3,6 @@ import { insertIntoTodaysDailyNote, rerollAndUpdate } from "./actions";
 import { hasPlaceholder } from "./core/insert-logic";
 import { MARKER } from "./core/renderer";
 import { translationById } from "./core/translations";
-import { downloadTranslation } from "./downloader";
 import { insertCallout } from "./inserter";
 import type DailyBibleVersePlugin from "./main";
 
@@ -70,14 +69,7 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
       }
       new Notice(`Daily Bible Verse: downloading ${meta.displayName} (~4-5 MB)…`);
       try {
-        const result = await downloadTranslation(plugin.app, plugin.manifestDir(), meta);
-        plugin.downloadedTranslations[meta.id] = {
-          downloadedAt: new Date().toISOString(),
-          verseCount: result.verseCount,
-          sizeBytes: result.sizeBytes,
-        };
-        plugin.resetDownloadedProvider(meta.id);
-        await plugin.savePluginData();
+        const result = await plugin.downloadAndRegister(meta);
         new Notice(
           `Daily Bible Verse: ${meta.displayName} downloaded (${result.verseCount.toLocaleString()} verses).`,
         );

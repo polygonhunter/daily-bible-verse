@@ -6,7 +6,7 @@ import { normalizeCalloutType } from "./core/renderer";
 import { BOOK_PRESETS } from "./core/pool";
 import { ALL_THEMES, type LanguageCode } from "./core/types";
 import { DEFAULT_TRANSLATION, translationById, translationsForLanguage } from "./core/translations";
-import { deleteDownloadedTranslation, downloadTranslation } from "./downloader";
+import { deleteDownloadedTranslation } from "./downloader";
 import type DailyBibleVersePlugin from "./main";
 import themesJson from "../data/themes.json";
 
@@ -29,6 +29,8 @@ const EMOJI_PRESETS = ["📖", "✝️", "🕊️", "🙏"];
 
 export class DailyBibleVerseSettingTab extends PluginSettingTab {
   private poolCountEl: HTMLElement | null = null;
+  /** Generation token: only the latest refreshPoolCount() may write. */
+  private poolCountSeq = 0;
   /** Keeps the custom-emoji field visible while its value still matches a
    * preset (right after the user picks "Custom…"). */
   private forceCustomEmoji = false;
@@ -380,16 +382,11 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
             .setCta()
             .onClick(async () => {
               if (!meta) return;
-              b.setButtonText("Downloading…").setDisabled(true);
+              b.setDisabled(true);
               try {
-                const result = await downloadTranslation(this.app, this.plugin.manifestDir(), meta);
-                this.plugin.downloadedTranslations[meta.id] = {
-                  downloadedAt: new Date().toISOString(),
-                  verseCount: result.verseCount,
-                  sizeBytes: result.sizeBytes,
-                };
-                this.plugin.resetDownloadedProvider(meta.id);
-                await this.plugin.savePluginData();
+                await this.plugin.downloadAndRegister(meta, (phase) =>
+                  b.setButtonText(phase === "downloading" ? "Downloading…" : "Processing…"),
+                );
               } catch (e) {
                 console.error("Daily Bible Verse: download failed", e);
                 new Notice("Daily Bible Verse: download failed — check your internet connection.");
@@ -401,23 +398,37 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
   }
 
   private async refreshPoolCount(): Promise<void> {
-    if (!this.poolCountEl) return;
-    const info = await this.plugin.getPoolInfo();
-    const years = info.keys.length / 365;
+    const el = this.poolCountEl;
+    if (!el) return;
+    const gen = ++this.poolCountSeq;
+    let count: number;
+    let usedFallback = false;
+    const quick = await this.plugin.quickPoolSize();
+    if (quick !== null) {
+      count = quick;
+    } else {
+      const info = await this.plugin.getPoolInfo();
+      count = info.keys.length;
+      usedFallback = info.usedFallback;
+    }
+    // A newer refresh started, or the tab was re-rendered/closed meanwhile.
+    if (gen !== this.poolCountSeq || !el.isConnected) return;
+
+    const years = count / 365;
     const cycle =
       years >= 2
         ? `≈ ${Math.round(years)} years`
         : years >= 1
           ? `≈ ${years.toFixed(1)} years`
-          : `≈ ${Math.max(1, Math.round(info.keys.length / 30.4))} months`;
-    let text = `${info.keys.length.toLocaleString()} verses — repeat-free for ${cycle}.`;
-    if (info.usedFallback && this.plugin.settings.poolMode !== "curated") {
+          : `≈ ${Math.max(1, Math.round(count / 30.4))} months`;
+    let text = `${count.toLocaleString()} verses — repeat-free for ${cycle}.`;
+    if (usedFallback && this.plugin.settings.poolMode !== "curated") {
       text += " (Falling back to the curated pool until the translation is downloaded.)";
     }
-    if (info.keys.length < 30) {
+    if (count < 30) {
       text += " ⚠ Very small pool — consider selecting more themes.";
     }
-    this.poolCountEl.setText(text);
+    el.setText(text);
   }
 
   private dailyNotesAvailable(): boolean {

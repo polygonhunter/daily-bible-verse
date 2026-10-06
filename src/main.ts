@@ -3,7 +3,7 @@ import { getAllDailyNotes, getDailyNote, getDateFromFile } from "obsidian-daily-
 import { BOOK_NAMES } from "./core/booknames";
 import { CURATED } from "./core/curated";
 import { dateKeyToDayIndex, daysSinceEpochLocal, localDateKey } from "./core/date";
-import { BOOK_PRESETS, buildCuratedPool, buildWholeBiblePool } from "./core/pool";
+import { BOOK_PRESETS, buildCuratedPool, buildWholeBiblePool, poolSizeFromCounts } from "./core/pool";
 import { newSeed } from "./core/hash";
 import { formatReference, parseRefKey } from "./core/reference";
 import { normalizeCalloutType, renderCallout } from "./core/renderer";
@@ -17,7 +17,7 @@ import {
 import type { LanguageCode, RefKey, VerseRange } from "./core/types";
 import { registerCommands } from "./commands";
 import { DailyNoteWatcher } from "./daily-note-watcher";
-import { translationFilePath } from "./downloader";
+import { downloadTranslation, translationFilePath, type DownloadPhase } from "./downloader";
 import { BundledProvider } from "./providers/bundled-provider";
 import { DownloadedProvider } from "./providers/downloaded-provider";
 import type { VerseTextProvider } from "./providers/provider";
@@ -28,6 +28,9 @@ export interface DownloadedTranslationMeta {
   downloadedAt: string;
   verseCount: number;
   sizeBytes: number;
+  /** book -> pool entries; lets the settings count the pool without loading
+   * the file. Missing for downloads made before this field existed. */
+  bookVerseCounts?: Record<string, number>;
 }
 
 interface PluginData {
@@ -181,6 +184,43 @@ export default class DailyBibleVersePlugin extends Plugin {
       this.downloadedProviders.set(translationId, provider);
     }
     return provider;
+  }
+
+  /** Downloads a translation, registers it and keeps the parsed data in
+   * memory — no second read + parse of the freshly written file. */
+  async downloadAndRegister(
+    meta: TranslationMeta,
+    onPhase?: (phase: DownloadPhase) => void,
+  ): Promise<DownloadedTranslationMeta> {
+    const result = await downloadTranslation(this.app, this.manifestDir(), meta, onPhase);
+    const entry: DownloadedTranslationMeta = {
+      downloadedAt: new Date().toISOString(),
+      verseCount: result.verseCount,
+      sizeBytes: result.sizeBytes,
+      bookVerseCounts: result.bookVerseCounts,
+    };
+    this.downloadedTranslations[meta.id] = entry;
+    this.downloadedProviders.set(
+      meta.id,
+      DownloadedProvider.fromStored(this.app, translationFilePath(this.manifestDir(), meta.id), result.stored),
+    );
+    this.invalidatePoolCache();
+    this.scheduleIdleRelease();
+    await this.savePluginData();
+    return entry;
+  }
+
+  /** Pool size without building the pool, when it can be derived cheaply from
+   * the download meta (settings counter). Null = use getPoolInfo(). */
+  async quickPoolSize(): Promise<number | null> {
+    const s = this.settings;
+    if (s.poolMode === "curated" || this.poolCache) return null;
+    const counts = this.downloadedTranslations[s.translationId]?.bookVerseCounts;
+    if (!counts) return null;
+    if (!(await this.getDownloadedProvider(s.translationId).isAvailable())) return null;
+    const books = s.poolMode === "books" ? (BOOK_PRESETS[s.bookPreset]?.books ?? []) : [];
+    const size = poolSizeFromCounts(counts, books);
+    return size > 0 ? size : null;
   }
 
   /** After a download or deletion the cached provider/pool must be dropped. */

@@ -1,5 +1,6 @@
 import { normalizePath, requestUrl, type App } from "obsidian";
 import { parseBebliaXml } from "./core/beblia";
+import { bookVerseCountsFromIndex } from "./core/pool";
 import { BEBLIA_BASE_URL, type TranslationMeta } from "./core/translations";
 import type { StoredTranslation } from "./providers/downloaded-provider";
 
@@ -10,12 +11,28 @@ export function translationFilePath(manifestDir: string, translationId: string):
 /** One-time download of a full translation (~4-5 MB) for whole-Bible mode.
  * Fetched via requestUrl (no CORS restrictions, mobile-safe), parsed with the
  * same sanitizer as the bundled data, stored in the plugin folder. */
+export interface DownloadResult {
+  verseCount: number;
+  sizeBytes: number;
+  /** book -> pool entries, for the settings' pool counter. */
+  bookVerseCounts: Record<string, number>;
+  /** The parsed data, so the caller can use it without re-reading the file. */
+  stored: StoredTranslation;
+}
+
+export type DownloadPhase = "downloading" | "processing";
+
 export async function downloadTranslation(
   app: App,
   manifestDir: string,
   meta: TranslationMeta,
-): Promise<{ verseCount: number; sizeBytes: number }> {
+  onPhase?: (phase: DownloadPhase) => void,
+): Promise<DownloadResult> {
+  onPhase?.("downloading");
   const response = await requestUrl({ url: `${BEBLIA_BASE_URL}${meta.bebliaFile}` });
+  onPhase?.("processing");
+  // Let the UI paint the new phase before the synchronous parse.
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
   const parsed = parseBebliaXml(response.text);
   if (parsed.verses.size < 20000) {
     throw new Error(`Downloaded data for ${meta.id} looks incomplete (${parsed.verses.size} verses)`);
@@ -39,7 +56,12 @@ export async function downloadTranslation(
   }
   const json = JSON.stringify(stored);
   await writeAtomically(app, translationFilePath(manifestDir, meta.id), json);
-  return { verseCount: parsed.verses.size, sizeBytes: new TextEncoder().encode(json).byteLength };
+  return {
+    verseCount: parsed.verses.size,
+    sizeBytes: new TextEncoder().encode(json).byteLength,
+    bookVerseCounts: bookVerseCountsFromIndex(stored.index),
+    stored,
+  };
 }
 
 /** Writes to `<path>.tmp` first and renames afterwards, so an interrupted

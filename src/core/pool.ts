@@ -32,6 +32,25 @@ export function buildWholeBiblePool(
   return keys;
 }
 
+/** book -> number of pool entries (sum of the per-chapter verse counts), as
+ * stored in the download meta so the settings can show the pool size without
+ * loading the 4-5 MB translation file. */
+export function bookVerseCountsFromIndex(
+  index: Record<string, Record<string, number>>,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const [book, chapters] of Object.entries(index)) {
+    counts[book] = Object.values(chapters).reduce((sum, n) => sum + n, 0);
+  }
+  return counts;
+}
+
+/** Pool size from per-book counts; equals buildWholeBiblePool(...).length. */
+export function poolSizeFromCounts(counts: Record<string, number>, selectedBooks: readonly number[]): number {
+  const books = selectedBooks.length > 0 ? selectedBooks.map(String) : Object.keys(counts);
+  return books.reduce((sum, b) => sum + (Object.prototype.hasOwnProperty.call(counts, b) ? counts[b] : 0), 0);
+}
+
 export const BOOK_PRESETS: Record<string, { label: string; books: number[] }> = {
   "old-testament": {
     label: "Old Testament",
