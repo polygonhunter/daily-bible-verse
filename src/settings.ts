@@ -22,6 +22,9 @@ export interface DailyBibleVerseSettings {
   /** Whole-Bible/books mode: extend a verse to the end of its sentence
    * (max. 4 verses, same chapter). Display only — the deck is unchanged. */
   completeSentences: boolean;
+  /** Optional frontmatter property that receives the reference after an
+   * insert, e.g. "bible-verse". Empty = off. */
+  referenceProperty: string;
   /** Generated once per vault; drives the deterministic deck shuffle. */
   baseSeed: string;
 }
@@ -40,5 +43,6 @@ export const DEFAULT_SETTINGS: DailyBibleVerseSettings = {
   showTranslationName: true,
   verseLinkTemplate: "",
   completeSentences: true,
+  referenceProperty: "",
   baseSeed: "",
 };

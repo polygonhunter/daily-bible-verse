@@ -69,6 +69,7 @@ export async function rerollAndUpdate(
   const rendered = await plugin.rerollForDate(target.date);
   const label = dayLabel(target.date);
   const replaced = target.file ? await replaceVerseInFile(plugin, target.file, rendered.markdown) : false;
+  if (replaced && target.file) await plugin.applyReferenceProperty(target.file, rendered.reference);
   let suffix = "";
   if (!target.file) suffix = " (no daily note to update)";
   else if (!replaced) suffix = ` (no verse callout in ${target.file.basename} to update)`;
@@ -94,6 +95,8 @@ export async function insertIntoTodaysDailyNote(plugin: DailyBibleVersePlugin): 
   const action = await insertCallout(plugin.app, file, rendered.markdown, plugin.settings.insertPosition);
   if (action === "already-present") {
     new Notice("Daily Bible Verse: today's note already has a verse.");
+  } else {
+    await plugin.applyReferenceProperty(file, rendered.reference);
   }
   await plugin.app.workspace.getLeaf().openFile(file);
 }

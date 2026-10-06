@@ -304,6 +304,21 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
           }),
       );
 
+    new Setting(containerEl)
+      .setName("Reference property")
+      .setDesc(
+        'Optional. Frontmatter property that receives the verse reference after inserting, e.g. "bible-verse" — handy for Dataview or Bases.',
+      )
+      .addText((t) =>
+        t
+          .setPlaceholder("bible-verse")
+          .setValue(s.referenceProperty)
+          .onChange((value) => {
+            s.referenceProperty = value.trim();
+            this.queueSave();
+          }),
+      );
+
     new Setting(containerEl).setName("Reset").setHeading();
 
     new Setting(containerEl)

@@ -108,12 +108,12 @@ export class DailyNoteWatcher {
 
     // The note's date drives the verse: creating yesterday's note late at
     // night yields yesterday's verse.
-    let markdown: string;
+    let verse: { markdown: string; reference: string };
     try {
       const rendered = await this.plugin.renderForDate(noteDate);
       if (this.unloaded) return;
       this.plugin.notifyFallback(rendered);
-      markdown = rendered.markdown;
+      verse = rendered;
     } catch (e) {
       console.error("Daily Bible Verse: could not render the verse for a new daily note", e);
       new Notice("Daily Bible Verse: could not insert the verse — see the developer console.");
@@ -121,13 +121,13 @@ export class DailyNoteWatcher {
     }
 
     for (const delay of DailyNoteWatcher.ATTEMPT_DELAYS_MS) {
-      this.setTimer(() => void this.attempt(file.path, markdown), delay);
+      this.setTimer(() => void this.attempt(file.path, verse), delay);
     }
-    this.watchForOverwrites(file.path, markdown);
+    this.watchForOverwrites(file.path, verse);
   }
 
   /** Re-inserts after a template plugin replaced the content. */
-  private watchForOverwrites(path: string, markdown: string): void {
+  private watchForOverwrites(path: string, verse: { markdown: string; reference: string }): void {
     const vault = this.plugin.app.vault;
     let scheduled = false;
     let ref: EventRef | null = null;
@@ -145,7 +145,7 @@ export class DailyNoteWatcher {
       // Bundle bursts of modify events into one attempt.
       void Promise.resolve().then(async () => {
         scheduled = false;
-        const action = await this.attempt(path, markdown);
+        const action = await this.attempt(path, verse);
         if (action === "inserted" || action === "placeholder") stop();
       });
     });
@@ -154,7 +154,10 @@ export class DailyNoteWatcher {
   }
 
   /** One idempotent insert attempt. Never throws. */
-  private async attempt(path: string, markdown: string): Promise<InsertAction | null> {
+  private async attempt(
+    path: string,
+    verse: { markdown: string; reference: string },
+  ): Promise<InsertAction | null> {
     if (this.unloaded) return null;
     const file = this.plugin.app.vault.getAbstractFileByPath(path);
     if (!(file instanceof TFile)) return null; // deleted or renamed meanwhile
@@ -163,7 +166,11 @@ export class DailyNoteWatcher {
       // verse is already there.
       const content = await this.plugin.app.vault.cachedRead(file);
       if (content.includes(MARKER) || this.unloaded) return "already-present";
-      return await insertCallout(this.plugin.app, file, markdown, this.plugin.settings.insertPosition);
+      const action = await insertCallout(this.plugin.app, file, verse.markdown, this.plugin.settings.insertPosition);
+      if (action !== "already-present" && !this.unloaded) {
+        await this.plugin.applyReferenceProperty(file, verse.reference);
+      }
+      return action;
     } catch (e) {
       console.error("Daily Bible Verse: auto-insert failed", e);
       return null;

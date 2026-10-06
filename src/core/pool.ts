@@ -63,4 +63,7 @@ export const BOOK_PRESETS: Record<string, { label: string; books: number[] }> = 
   gospels: { label: "Gospels", books: [40, 41, 42, 43] },
   psalms: { label: "Psalms", books: [19] },
   "psalms-proverbs": { label: "Psalms & Proverbs", books: [19, 20] },
+  wisdom: { label: "Wisdom books (Job – Song of Songs)", books: [18, 19, 20, 21, 22] },
+  prophets: { label: "Prophets (Isaiah – Malachi)", books: Array.from({ length: 17 }, (_, i) => i + 23) },
+  pauline: { label: "Letters of Paul (Romans – Hebrews)", books: Array.from({ length: 14 }, (_, i) => i + 45) },
 };

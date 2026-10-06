@@ -50,6 +50,11 @@ describe("buildWholeBiblePool", () => {
     expect(BOOK_PRESETS["new-testament"].books[0]).toBe(40);
     expect(BOOK_PRESETS["old-testament"].books).toHaveLength(39);
     expect(BOOK_PRESETS.gospels.books).toEqual([40, 41, 42, 43]);
+    expect(BOOK_PRESETS.wisdom.books).toEqual([18, 19, 20, 21, 22]);
+    expect(BOOK_PRESETS.prophets.books[0]).toBe(23);
+    expect(BOOK_PRESETS.prophets.books[16]).toBe(39);
+    expect(BOOK_PRESETS.pauline.books[0]).toBe(45);
+    expect(BOOK_PRESETS.pauline.books[13]).toBe(58);
   });
 });
 

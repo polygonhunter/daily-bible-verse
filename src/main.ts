@@ -59,6 +59,19 @@ interface PoolInfo {
   usedFallback: boolean;
 }
 
+/** Public API, reachable as
+ * `app.plugins.plugins["daily-bible-verse"].api` (Templater, Slashosaurus, …). */
+export interface DailyBibleVerseApi {
+  /** The verse for `date` (default: today), exactly as it would be inserted. */
+  getVerse(date?: Date): Promise<{
+    reference: string;
+    text: string;
+    translation: string;
+    markdown: string;
+    refKey: RefKey;
+  }>;
+}
+
 const OVERRIDE_RETENTION_DAYS = 60;
 /** Downloaded texts (~5-10 MB in memory) are freed after this idle time. */
 const PROVIDER_IDLE_RELEASE_MS = 120_000;
@@ -70,6 +83,13 @@ export default class DailyBibleVersePlugin extends Plugin {
   settings: DailyBibleVerseSettings = { ...DEFAULT_SETTINGS };
   overrides: Record<string, DayOverride> = {};
   downloadedTranslations: Record<string, DownloadedTranslationMeta> = {};
+
+  readonly api: DailyBibleVerseApi = {
+    getVerse: async (date?: Date) => {
+      const r = await this.renderForDate(date ?? new Date());
+      return { reference: r.reference, text: r.text, translation: r.translation, markdown: r.markdown, refKey: r.refKey };
+    },
+  };
 
   private downloadedProviders: Map<string, DownloadedProvider> = new Map();
   private bundledProviders: Map<string, BundledProvider> = new Map();
@@ -445,6 +465,20 @@ export default class DailyBibleVersePlugin extends Plugin {
       return getDailyNote(moment(), getAllDailyNotes()) ?? null;
     } catch {
       return null;
+    }
+  }
+
+  /** Writes the verse reference into the note's frontmatter when the
+   * "Reference property" setting is set (for Dataview / Bases). */
+  async applyReferenceProperty(file: TFile, reference: string): Promise<void> {
+    const prop = this.settings.referenceProperty.trim();
+    if (!prop) return;
+    try {
+      await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+        fm[prop] = reference;
+      });
+    } catch (e) {
+      console.error("Daily Bible Verse: could not set the reference property", e);
     }
   }
 

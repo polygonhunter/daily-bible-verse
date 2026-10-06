@@ -59,7 +59,8 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
         void (async () => {
           const rendered = await plugin.renderForDate(plugin.dateForFile(file) ?? new Date());
           plugin.notifyFallback(rendered);
-          await insertCallout(plugin.app, file, rendered.markdown, plugin.settings.insertPosition);
+          const action = await insertCallout(plugin.app, file, rendered.markdown, plugin.settings.insertPosition);
+          if (action !== "already-present") await plugin.applyReferenceProperty(file, rendered.reference);
         })();
       }
       return true;
