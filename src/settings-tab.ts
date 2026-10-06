@@ -1,6 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import { appHasDailyNotesPluginLoaded } from "obsidian-daily-notes-interface";
 import { CURATED } from "./core/curated";
+import { newSeed } from "./core/hash";
 import { normalizeCalloutType } from "./core/renderer";
 import { BOOK_PRESETS } from "./core/pool";
 import { ALL_THEMES, type LanguageCode } from "./core/types";
@@ -253,7 +254,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
       )
       .addButton((b) =>
         b.setButtonText("Reset").onClick(async () => {
-          this.plugin.settings.baseSeed = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+          this.plugin.settings.baseSeed = newSeed();
           this.plugin.invalidatePoolCache();
           await this.plugin.savePluginData();
           new Notice("Daily Bible Verse: shuffle seed reset.");

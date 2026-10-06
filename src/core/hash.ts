@@ -27,3 +27,9 @@ export function mulberry32(seed: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/** Fresh per-vault shuffle seed. The only place where randomness is allowed:
+ * it is generated once and then synced, so all devices share it. */
+export function newSeed(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}

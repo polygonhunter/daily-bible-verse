@@ -4,6 +4,7 @@ import { BOOK_NAMES } from "./core/booknames";
 import { CURATED } from "./core/curated";
 import { dateKeyToDayIndex, daysSinceEpochLocal, localDateKey } from "./core/date";
 import { BOOK_PRESETS, buildCuratedPool, buildWholeBiblePool } from "./core/pool";
+import { newSeed } from "./core/hash";
 import { formatReference, parseRefKey } from "./core/reference";
 import { normalizeCalloutType, renderCallout } from "./core/renderer";
 import { rerollRefForDay, selectRefForDay, type DayOverride } from "./core/select";
@@ -79,11 +80,27 @@ export default class DailyBibleVersePlugin extends Plugin {
     this.downloadedTranslations = raw?.downloadedTranslations ?? {};
 
     if (firstRun) this.applyLocaleDefaults();
+    let seeded = false;
     if (!this.settings.baseSeed) {
-      this.settings.baseSeed = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      this.settings.baseSeed = newSeed();
+      seeded = true;
     }
-    this.pruneOverrides();
-    await this.savePluginData();
+    const pruned = this.pruneOverrides();
+    // Only write when something actually changed: an unconditional save on
+    // every start touches data.json on every device and provokes sync
+    // conflicts.
+    if (firstRun || seeded || pruned) await this.savePluginData();
+  }
+
+  /** data.json was changed on disk by sync: reload without writing back. */
+  async onExternalSettingsChange(): Promise<void> {
+    const raw = (await this.loadData()) as Partial<PluginData> | null;
+    if (!raw?.settings) return;
+    this.settings = { ...DEFAULT_SETTINGS, ...raw.settings };
+    this.overrides = raw.overrides ?? {};
+    this.downloadedTranslations = raw.downloadedTranslations ?? {};
+    this.invalidatePoolCache();
+    this.evictUnusedDownloadedProviders();
   }
 
   /** First run: adopt Obsidian's UI language when we support it. */
@@ -104,15 +121,23 @@ export default class DailyBibleVersePlugin extends Plugin {
     await this.saveData(data);
   }
 
-  private pruneOverrides(): void {
+  /** Drops overrides older than the retention window. True if any were dropped. */
+  private pruneOverrides(): boolean {
     const today = daysSinceEpochLocal(new Date());
+    let pruned = false;
     for (const key of Object.keys(this.overrides)) {
+      let expired: boolean;
       try {
-        if (today - dateKeyToDayIndex(key) > OVERRIDE_RETENTION_DAYS) delete this.overrides[key];
+        expired = today - dateKeyToDayIndex(key) > OVERRIDE_RETENTION_DAYS;
       } catch {
+        expired = true;
+      }
+      if (expired) {
         delete this.overrides[key];
+        pruned = true;
       }
     }
+    return pruned;
   }
 
   // ---- pools & providers ------------------------------------------------
