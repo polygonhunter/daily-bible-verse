@@ -3,6 +3,17 @@
  * (<S>1234</S>), footnote sups, <br> line breaks, entities. Shared between the
  * build-time fetch script and the runtime downloaded-translation provider. */
 export function sanitizeVerseText(raw: string): string {
+  // Fast path (most verses of a whole-Bible download): nothing below can
+  // change a string without markup/braces/entities, without whitespace other
+  // than single inner spaces. Makes the download parse several times faster.
+  if (!NEEDS_FULL_PASS.test(raw)) return raw;
+  return sanitizeVerseTextFull(raw);
+}
+
+const NEEDS_FULL_PASS = /[<{&]|[^\S ]| {2}|^ | $/;
+
+/** The full transformation. Exported for the fast-path equivalence test. */
+export function sanitizeVerseTextFull(raw: string): string {
   let s = raw;
   // Strong's numbers and footnote markers: drop tag AND content.
   s = s.replace(/<S>[^<]*<\/S>/gi, "");
