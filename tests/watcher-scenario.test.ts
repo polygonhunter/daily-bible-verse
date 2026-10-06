@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { applyToContent } from "../src/core/insert-logic";
 import { MARKER, renderCallout } from "../src/core/renderer";
 
-/** Simulates the DailyNoteWatcher retry schedule: each timed attempt runs the
- * same idempotent transform, while Templater may overwrite the file content
- * between attempts. The invariant: whatever the timing, the note ends with
+/** Simulates the DailyNoteWatcher attempts (timed at 0 / 1500 ms plus one per
+ * `modify` of the note within 60 s): each attempt runs the same idempotent
+ * transform, while Templater may overwrite the file content between attempts. The invariant: whatever the timing, the note ends with
  * exactly one verse callout. */
 
 const callout = renderCallout({
@@ -32,9 +32,9 @@ describe("daily-note insertion with Templater interference", () => {
 
     // Templater overwrites the whole file with the rendered template.
     content = "---\ntags: [daily]\n---\n# Montag\n\n{{bible-verse}}\n\n## Tasks\n";
-    attempt(); // t=400ms — fills the placeholder
+    attempt(); // modify event — fills the placeholder
     attempt(); // t=1500ms — no-op
-    attempt(); // t=3500ms — no-op
+    attempt(); // own modify event — no-op
 
     expect(countMarkers(content)).toBe(1);
     expect(content).not.toContain("{{bible-verse}}");

@@ -18,7 +18,7 @@ export async function insertCallout(
   await app.vault.process(file, (content) => {
     const result = applyToContent(content, callout, position);
     action = result.action;
-    return result.content;
+    return result.changed ? result.content : content;
   });
   return action;
 }
