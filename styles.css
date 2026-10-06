@@ -62,3 +62,7 @@
 .daily-bible-verse-more[open] > summary {
   color: var(--text-normal);
 }
+
+.daily-bible-verse-modal-body .callout {
+  margin: 0;
+}

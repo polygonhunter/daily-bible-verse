@@ -22,6 +22,7 @@ import { BundledProvider } from "./providers/bundled-provider";
 import { DownloadedProvider } from "./providers/downloaded-provider";
 import type { VerseTextProvider } from "./providers/provider";
 import { DailyBibleVerseSettingTab } from "./settings-tab";
+import { VerseModal } from "./verse-modal";
 import { DEFAULT_SETTINGS, type DailyBibleVerseSettings } from "./settings";
 
 export interface DownloadedTranslationMeta {
@@ -43,6 +44,10 @@ export interface RenderedVerse {
   markdown: string;
   reference: string;
   refKey: RefKey;
+  /** Plain verse text (may contain newlines). */
+  text: string;
+  /** Short name of the translation, e.g. "KJV". */
+  translation: string;
   /** True when whole-Bible mode fell back to the curated pool (no download). */
   usedFallbackPool: boolean;
 }
@@ -76,6 +81,11 @@ export default class DailyBibleVersePlugin extends Plugin {
     registerCommands(this);
     new DailyNoteWatcher(this).start();
     this.addSettingTab(new DailyBibleVerseSettingTab(this.app, this));
+    this.addRibbonIcon("book-open", "Show today's Bible verse", () => this.showTodaysVerse());
+  }
+
+  showTodaysVerse(): void {
+    new VerseModal(this.app, this).open();
   }
 
   onunload(): void {
@@ -358,7 +368,7 @@ export default class DailyBibleVersePlugin extends Plugin {
       emoji: s.emoji,
       headerText: s.headerText,
     });
-    return { markdown, reference, refKey };
+    return { markdown, reference, refKey, text, translation: this.currentTranslation().shortName };
   }
 
   private buildLink(range: VerseRange, reference: string): string | undefined {

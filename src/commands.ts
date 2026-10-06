@@ -23,6 +23,12 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
   });
 
   plugin.addCommand({
+    id: "show-todays-verse",
+    name: "Show today's verse",
+    callback: () => plugin.showTodaysVerse(),
+  });
+
+  plugin.addCommand({
     id: "insert-verse-into-daily-note",
     name: "Insert today's verse into today's daily note",
     callback: () => insertIntoTodaysDailyNote(plugin),
