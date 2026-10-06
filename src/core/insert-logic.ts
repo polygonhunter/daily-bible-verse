@@ -66,14 +66,23 @@ function frontmatterEndIndex(content: string): number {
   return open[0].length + close.index + close[0].length;
 }
 
-/** Replaces an existing marker callout (found via MARKER) with a new one.
- * Returns null when no marker callout exists. Used by the re-roll command. */
-export function replaceMarkerCallout(content: string, newCallout: string): string | null {
-  const lines = content.split("\n");
+/** Line span (inclusive, 0-based) of the marker callout: the quoted line that
+ * carries MARKER plus all directly following quoted lines. Shared by the
+ * file-based replacement and the editor-based one (which keeps undo working). */
+export function findMarkerCallout(lines: readonly string[]): { start: number; end: number } | null {
   const start = lines.findIndex((l) => l.includes(MARKER) && l.trimStart().startsWith(">"));
   if (start === -1) return null;
   let end = start;
   while (end + 1 < lines.length && lines[end + 1].trimStart().startsWith(">")) end++;
-  const replaced = [...lines.slice(0, start), newCallout, ...lines.slice(end + 1)];
+  return { start, end };
+}
+
+/** Replaces an existing marker callout (found via MARKER) with a new one.
+ * Returns null when no marker callout exists. Used by the re-roll command. */
+export function replaceMarkerCallout(content: string, newCallout: string): string | null {
+  const lines = content.split("\n");
+  const span = findMarkerCallout(lines);
+  if (!span) return null;
+  const replaced = [...lines.slice(0, span.start), newCallout, ...lines.slice(span.end + 1)];
   return replaced.join("\n");
 }

@@ -1,4 +1,5 @@
-import { getLanguage, Notice, Plugin } from "obsidian";
+import { getLanguage, moment as obsidianMoment, Notice, Plugin, type TFile } from "obsidian";
+import { getAllDailyNotes, getDailyNote, getDateFromFile } from "obsidian-daily-notes-interface";
 import { BOOK_NAMES } from "./core/booknames";
 import { CURATED } from "./core/curated";
 import { dateKeyToDayIndex, daysSinceEpochLocal, localDateKey } from "./core/date";
@@ -49,6 +50,9 @@ interface PoolInfo {
 }
 
 const OVERRIDE_RETENTION_DAYS = 60;
+
+// Obsidian's moment export is typed as a namespace; cast once to call it.
+const moment = obsidianMoment as unknown as typeof import("moment");
 
 export default class DailyBibleVersePlugin extends Plugin {
   settings: DailyBibleVerseSettings = { ...DEFAULT_SETTINGS };
@@ -247,21 +251,48 @@ export default class DailyBibleVersePlugin extends Plugin {
       .replace(/\{ref\}/g, encodeURIComponent(reference));
   }
 
-  /** Re-rolls today's verse and freezes the result for the rest of the day. */
-  async rerollToday(): Promise<RenderedVerse> {
-    const now = new Date();
-    const dateKey = localDateKey(now);
+  /** Re-rolls the verse of `date` and freezes the result for that day. */
+  async rerollForDate(date: Date): Promise<RenderedVerse> {
+    const dateKey = localDateKey(date);
     const pool = await this.getPoolInfo();
     const previous = this.overrides[dateKey];
     this.overrides[dateKey] = rerollRefForDay(
       pool.keys,
-      daysSinceEpochLocal(now),
+      daysSinceEpochLocal(date),
       this.settings.baseSeed,
       previous?.rerollCount ?? 0,
       previous?.refKey,
     );
     await this.savePluginData();
-    return this.renderForDate(now);
+    return this.renderForDate(date);
+  }
+
+  /** Re-rolls today's verse and freezes the result for the rest of the day. */
+  async rerollToday(): Promise<RenderedVerse> {
+    return this.rerollForDate(new Date());
+  }
+
+  // ---- daily-note helpers -----------------------------------------------
+
+  /** The date of a daily note (per the Daily/Periodic Notes format), or null
+   * for any other file or when no daily-notes plugin is configured. */
+  dateForFile(file: TFile | null): Date | null {
+    if (!file || file.extension !== "md") return null;
+    try {
+      const m = getDateFromFile(file, "day");
+      return m ? m.toDate() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Today's existing daily note, or null. Never creates one. */
+  todaysDailyNote(): TFile | null {
+    try {
+      return getDailyNote(moment(), getAllDailyNotes()) ?? null;
+    } catch {
+      return null;
+    }
   }
 
   notifyFallback(rendered: RenderedVerse): void {

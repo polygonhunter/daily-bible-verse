@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyToContent, hasPlaceholder, replaceMarkerCallout } from "../src/core/insert-logic";
+import { applyToContent, findMarkerCallout, hasPlaceholder, replaceMarkerCallout } from "../src/core/insert-logic";
 import { MARKER, renderCallout } from "../src/core/renderer";
 
 const callout = renderCallout({
@@ -142,5 +142,19 @@ describe("replaceMarkerCallout", () => {
 
   it("returns null when no marker exists", () => {
     expect(replaceMarkerCallout("# Nothing here\n", callout)).toBeNull();
+  });
+});
+
+describe("findMarkerCallout", () => {
+  it("spans the marker line plus all following quoted lines", () => {
+    const lines = `# Day\n\n${callout}\n\nNotes\n> unrelated quote`.split("\n");
+    const span = findMarkerCallout(lines);
+    expect(span).not.toBeNull();
+    expect(lines[span!.start]).toContain(MARKER);
+    expect(span!.end - span!.start + 1).toBe(callout.split("\n").length);
+  });
+
+  it("returns null without a marker callout", () => {
+    expect(findMarkerCallout(["> just a quote", "text"])).toBeNull();
   });
 });

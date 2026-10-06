@@ -1,18 +1,10 @@
-import { moment as obsidianMoment, Notice, type TFile } from "obsidian";
-
-// Obsidian's moment export is typed as a namespace; cast once to call it.
-const moment = obsidianMoment as unknown as typeof import("moment");
-import {
-  appHasDailyNotesPluginLoaded,
-  createDailyNote,
-  getAllDailyNotes,
-  getDailyNote,
-} from "obsidian-daily-notes-interface";
+import { Notice } from "obsidian";
+import { insertIntoTodaysDailyNote, rerollAndUpdate } from "./actions";
 import { hasPlaceholder } from "./core/insert-logic";
 import { MARKER } from "./core/renderer";
 import { translationById } from "./core/translations";
 import { downloadTranslation } from "./downloader";
-import { insertCallout, replaceCallout } from "./inserter";
+import { insertCallout } from "./inserter";
 import type DailyBibleVersePlugin from "./main";
 
 /** Command IDs are a public contract (frozen since 1.0.0) so external tools —
@@ -22,8 +14,10 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
   plugin.addCommand({
     id: "insert-todays-verse",
     name: "Insert today's verse at cursor",
-    editorCallback: async (editor) => {
-      const rendered = await plugin.renderForDate(new Date());
+    editorCallback: async (editor, ctx) => {
+      // In a daily note the note's own date decides the verse.
+      const date = plugin.dateForFile(ctx.file) ?? new Date();
+      const rendered = await plugin.renderForDate(date);
       plugin.notifyFallback(rendered);
       editor.replaceSelection(`${rendered.markdown}\n`);
     },
@@ -32,45 +26,13 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
   plugin.addCommand({
     id: "insert-verse-into-daily-note",
     name: "Insert today's verse into today's daily note",
-    callback: async () => {
-      if (!appHasDailyNotesPluginLoaded()) {
-        new Notice("Daily Bible Verse: the Daily Notes (or Periodic Notes) plugin is not enabled.");
-        return;
-      }
-      const today = moment();
-      let file: TFile | null = getDailyNote(today, getAllDailyNotes());
-      if (!file) file = (await createDailyNote(today)) ?? null;
-      if (!file) {
-        new Notice("Daily Bible Verse: could not open or create today's daily note.");
-        return;
-      }
-      const rendered = await plugin.renderForDate(new Date());
-      plugin.notifyFallback(rendered);
-      const action = await insertCallout(
-        plugin.app,
-        file,
-        rendered.markdown,
-        plugin.settings.insertPosition,
-      );
-      if (action === "already-present") {
-        new Notice("Daily Bible Verse: today's note already has a verse.");
-      }
-      await plugin.app.workspace.getLeaf().openFile(file);
-    },
+    callback: () => insertIntoTodaysDailyNote(plugin),
   });
 
   plugin.addCommand({
     id: "reroll-todays-verse",
     name: "Re-roll today's verse",
-    callback: async () => {
-      const rendered = await plugin.rerollToday();
-      const file = plugin.app.workspace.getActiveFile();
-      let replaced = false;
-      if (file) replaced = await replaceCallout(plugin.app, file, rendered.markdown);
-      new Notice(
-        `Daily Bible Verse: today's verse is now ${rendered.reference}${replaced ? "" : " (no existing verse callout in the active note to update)"}.`,
-      );
-    },
+    callback: () => rerollAndUpdate(plugin),
   });
 
   plugin.addCommand({
@@ -91,7 +53,7 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
         new Notice("Daily Bible Verse: no {{bible-verse}} placeholder found.");
         return;
       }
-      const rendered = await plugin.renderForDate(new Date());
+      const rendered = await plugin.renderForDate(plugin.dateForFile(file) ?? new Date());
       plugin.notifyFallback(rendered);
       await insertCallout(plugin.app, file, rendered.markdown, plugin.settings.insertPosition);
     },
