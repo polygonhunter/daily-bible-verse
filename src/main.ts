@@ -172,7 +172,12 @@ export default class DailyBibleVersePlugin extends Plugin {
     if (s.poolMode === "curated") {
       info = { keys: this.curatedKeys(), source: "curated", usedFallback: false };
     } else {
-      const index = await this.getDownloadedProvider(s.translationId).getIndex().catch(() => null);
+      const index = await this.getDownloadedProvider(s.translationId)
+        .getIndex()
+        .catch((e) => {
+          console.warn("Daily Bible Verse: downloaded translation is unreadable — using the curated pool", e);
+          return null;
+        });
       if (!index) {
         info = { keys: this.curatedKeys(), source: "curated", usedFallback: true };
       } else {
@@ -298,7 +303,7 @@ export default class DailyBibleVersePlugin extends Plugin {
   notifyFallback(rendered: RenderedVerse): void {
     if (rendered.usedFallbackPool && this.settings.poolMode !== "curated") {
       new Notice(
-        "Daily Bible Verse: translation not downloaded yet — using the curated verse pool. Download it in the plugin settings.",
+        "Daily Bible Verse: this translation is not downloaded on this device yet — using the curated verse pool. Download it in the plugin settings.",
       );
     }
   }

@@ -38,8 +38,28 @@ export async function downloadTranslation(
     await app.vault.adapter.mkdir(dir);
   }
   const json = JSON.stringify(stored);
-  await app.vault.adapter.write(translationFilePath(manifestDir, meta.id), json);
-  return { verseCount: parsed.verses.size, sizeBytes: json.length };
+  await writeAtomically(app, translationFilePath(manifestDir, meta.id), json);
+  return { verseCount: parsed.verses.size, sizeBytes: new TextEncoder().encode(json).byteLength };
+}
+
+/** Writes to `<path>.tmp` first and renames afterwards, so an interrupted
+ * write (app closed, disk full, mobile kill) never leaves a truncated file
+ * that would later fail to parse. */
+async function writeAtomically(app: App, path: string, data: string): Promise<void> {
+  const adapter = app.vault.adapter;
+  const tmp = `${path}.tmp`;
+  try {
+    await adapter.write(tmp, data);
+    if (await adapter.exists(path)) await adapter.remove(path);
+    await adapter.rename(tmp, path);
+  } catch (e) {
+    try {
+      if (await adapter.exists(tmp)) await adapter.remove(tmp);
+    } catch {
+      // best effort
+    }
+    throw e;
+  }
 }
 
 export async function deleteDownloadedTranslation(

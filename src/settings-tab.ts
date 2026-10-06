@@ -301,50 +301,68 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
 
   private renderDownloadSection(containerEl: HTMLElement): void {
     const s = this.plugin.settings;
-    const meta = translationById(s.translationId);
-    const downloaded = this.plugin.downloadedTranslations[s.translationId];
-    const setting = new Setting(containerEl)
-      .setName("Offline data")
-      .setDesc(
-        downloaded
-          ? `${meta?.displayName ?? s.translationId}: downloaded (${downloaded.verseCount.toLocaleString()} verses, ${(downloaded.sizeBytes / 1024 / 1024).toFixed(1)} MB).`
-          : `${meta?.displayName ?? s.translationId}: not downloaded yet. Whole-Bible mode needs a one-time download (~4-5 MB); until then the curated pool is used.`,
-      );
-    if (downloaded) {
-      setting.addButton((b) =>
-        b.setButtonText("Delete").onClick(async () => {
-          await deleteDownloadedTranslation(this.app, this.plugin.manifestDir(), s.translationId);
-          delete this.plugin.downloadedTranslations[s.translationId];
-          this.plugin.resetDownloadedProvider(s.translationId);
-          await this.plugin.savePluginData();
-          this.display();
-        }),
-      );
-    } else {
-      setting.addButton((b) =>
-        b
-          .setButtonText("Download now")
-          .setCta()
-          .onClick(async () => {
-            if (!meta) return;
-            b.setButtonText("Downloading…").setDisabled(true);
-            try {
-              const result = await downloadTranslation(this.app, this.plugin.manifestDir(), meta);
-              this.plugin.downloadedTranslations[meta.id] = {
-                downloadedAt: new Date().toISOString(),
-                verseCount: result.verseCount,
-                sizeBytes: result.sizeBytes,
-              };
-              this.plugin.resetDownloadedProvider(meta.id);
+    const id = s.translationId;
+    const meta = translationById(id);
+    const name = meta?.displayName ?? id;
+    const setting = new Setting(containerEl).setName("Offline data").setDesc(`${name}: checking…`);
+
+    // The status comes from the FILE, not from data.json: data.json syncs
+    // between devices, the downloaded file (in the plugin folder) usually
+    // does not. A stale meta entry is ignored, never deleted (deleting it
+    // would sync back and forth between devices).
+    void this.plugin
+      .getDownloadedProvider(id)
+      .isAvailable()
+      .catch(() => false)
+      .then((available) => {
+        if (!setting.settingEl.isConnected || this.plugin.settings.translationId !== id) return;
+        const downloaded = this.plugin.downloadedTranslations[id];
+        if (available) {
+          setting.setDesc(
+            downloaded
+              ? `${name}: downloaded (${downloaded.verseCount.toLocaleString()} verses, ${(downloaded.sizeBytes / 1024 / 1024).toFixed(1)} MB).`
+              : `${name}: downloaded.`,
+          );
+          setting.addButton((b) =>
+            b.setButtonText("Delete").onClick(async () => {
+              await deleteDownloadedTranslation(this.app, this.plugin.manifestDir(), id);
+              delete this.plugin.downloadedTranslations[id];
+              this.plugin.resetDownloadedProvider(id);
               await this.plugin.savePluginData();
-            } catch (e) {
-              console.error("Daily Bible Verse: download failed", e);
-              new Notice("Daily Bible Verse: download failed — check your internet connection.");
-            }
-            this.display();
-          }),
-      );
-    }
+              this.display();
+            }),
+          );
+          return;
+        }
+        setting.setDesc(
+          downloaded
+            ? `${name}: downloaded on another device, but not on this one yet. Until then the curated pool is used here.`
+            : `${name}: not downloaded yet. Whole-Bible mode needs a one-time download (~4-5 MB); until then the curated pool is used.`,
+        );
+        setting.addButton((b) =>
+          b
+            .setButtonText("Download now")
+            .setCta()
+            .onClick(async () => {
+              if (!meta) return;
+              b.setButtonText("Downloading…").setDisabled(true);
+              try {
+                const result = await downloadTranslation(this.app, this.plugin.manifestDir(), meta);
+                this.plugin.downloadedTranslations[meta.id] = {
+                  downloadedAt: new Date().toISOString(),
+                  verseCount: result.verseCount,
+                  sizeBytes: result.sizeBytes,
+                };
+                this.plugin.resetDownloadedProvider(meta.id);
+                await this.plugin.savePluginData();
+              } catch (e) {
+                console.error("Daily Bible Verse: download failed", e);
+                new Notice("Daily Bible Verse: download failed — check your internet connection.");
+              }
+              this.display();
+            }),
+        );
+      });
   }
 
   private async refreshPoolCount(): Promise<void> {
