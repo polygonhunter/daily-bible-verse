@@ -207,10 +207,11 @@ export default class DailyBibleVersePlugin extends Plugin {
     let text = await provider.getText(refKey);
     if (text === null) {
       // Defensive: frozen override may point outside the current data, or a
-      // verse may be absent from this translation. Walk the deck until a
-      // verse resolves.
+      // verse may be absent from this translation. Walk the deck BACKWARDS
+      // (past days) until a verse resolves — walking forward would pull in
+      // the verses of the coming days and show them twice.
       for (let offset = 0; offset <= Math.min(pool.keys.length, 50) && text === null; offset++) {
-        refKey = selectRefForDay(pool.keys, dayIndex + offset, this.settings.baseSeed);
+        refKey = selectRefForDay(pool.keys, dayIndex - offset, this.settings.baseSeed);
         text = await provider.getText(refKey);
       }
     }
@@ -251,12 +252,13 @@ export default class DailyBibleVersePlugin extends Plugin {
     const now = new Date();
     const dateKey = localDateKey(now);
     const pool = await this.getPoolInfo();
-    const previous = this.overrides[dateKey]?.rerollCount ?? 0;
+    const previous = this.overrides[dateKey];
     this.overrides[dateKey] = rerollRefForDay(
       pool.keys,
       daysSinceEpochLocal(now),
       this.settings.baseSeed,
-      previous,
+      previous?.rerollCount ?? 0,
+      previous?.refKey,
     );
     await this.savePluginData();
     return this.renderForDate(now);
