@@ -19,6 +19,9 @@ export interface DailyBibleVerseSettings {
   showTranslationName: boolean;
   /** Optional URL template; placeholders: {bookEn} {bookLocal} {chapter} {verse} {ref}. */
   verseLinkTemplate: string;
+  /** Whole-Bible/books mode: extend a verse to the end of its sentence
+   * (max. 4 verses, same chapter). Display only — the deck is unchanged. */
+  completeSentences: boolean;
   /** Generated once per vault; drives the deterministic deck shuffle. */
   baseSeed: string;
 }
@@ -36,5 +39,6 @@ export const DEFAULT_SETTINGS: DailyBibleVerseSettings = {
   headerText: "",
   showTranslationName: true,
   verseLinkTemplate: "",
+  completeSentences: true,
   baseSeed: "",
 };

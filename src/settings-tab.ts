@@ -149,7 +149,20 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
           });
         });
     }
-    if (s.poolMode !== "curated") this.renderDownloadSection(containerEl);
+    if (s.poolMode !== "curated") {
+      this.renderDownloadSection(containerEl);
+      new Setting(containerEl)
+        .setName("Complete sentences")
+        .setDesc(
+          "When a verse ends mid-sentence, continue with the following verses of the same chapter (up to 4).",
+        )
+        .addToggle((t) =>
+          t.setValue(s.completeSentences).onChange(async (value) => {
+            s.completeSentences = value;
+            await this.plugin.savePluginData();
+          }),
+        );
+    }
 
     const poolInfo = new Setting(containerEl).setName("Your current pool");
     this.poolCountEl = poolInfo.descEl;

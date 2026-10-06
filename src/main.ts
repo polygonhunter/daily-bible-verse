@@ -5,7 +5,8 @@ import { CURATED } from "./core/curated";
 import { dateKeyToDayIndex, daysSinceEpochLocal, localDateKey } from "./core/date";
 import { BOOK_PRESETS, buildCuratedPool, buildWholeBiblePool, poolSizeFromCounts } from "./core/pool";
 import { newSeed } from "./core/hash";
-import { formatReference, parseRefKey } from "./core/reference";
+import { formatReference, parseRefKey, refKey as toRefKey } from "./core/reference";
+import { extendToSentence } from "./core/sentence";
 import { normalizeCalloutType, renderCallout } from "./core/renderer";
 import { rerollRefForDay, selectRefForDay, type DayOverride } from "./core/select";
 import {
@@ -349,8 +350,29 @@ export default class DailyBibleVersePlugin extends Plugin {
         text = await provider.getText(refKey);
       }
     }
-    if (pool.source === "downloaded") this.scheduleIdleRelease();
     if (text === null) throw new Error("Daily Bible Verse: could not resolve a verse text");
+
+    if (pool.source === "downloaded") {
+      // Whole-Bible pools hold single verses, often sentence fragments.
+      // Display-only extension: pool, deck and overrides stay untouched.
+      if (this.settings.completeSentences) {
+        const range = parseRefKey(refKey);
+        const extended = await extendToSentence(range, (v) =>
+          v === range.verseEnd && range.verseStart === range.verseEnd
+            ? text
+            : provider.getText(`${range.book}:${range.chapter}:${v}-${v}`),
+        );
+        if (extended !== range) {
+          const extendedKey = toRefKey(extended);
+          const extendedText = await provider.getText(extendedKey);
+          if (extendedText !== null) {
+            refKey = extendedKey;
+            text = extendedText;
+          }
+        }
+      }
+      this.scheduleIdleRelease();
+    }
 
     return { ...this.renderVerse(refKey, text), usedFallbackPool: pool.usedFallback };
   }
