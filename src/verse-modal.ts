@@ -55,7 +55,12 @@ export class VerseModal extends Modal {
       .addButton((b) =>
         b.setButtonText("Re-roll").onClick(async () => {
           b.setDisabled(true);
-          await rerollAndUpdate(this.plugin, { file: this.plugin.todaysDailyNote(), date: new Date() });
+          try {
+            await rerollAndUpdate(this.plugin, { file: this.plugin.todaysDailyNote(), date: new Date() });
+          } catch (e) {
+            console.error("Daily Bible Verse: re-roll failed", e);
+            new Notice("Daily Bible Verse: re-roll failed — see the developer console.");
+          }
           await this.renderVerse();
         }),
       )

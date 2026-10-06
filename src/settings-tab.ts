@@ -453,9 +453,9 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
               if (!meta) return;
               b.setDisabled(true);
               try {
-                await this.plugin.downloadAndRegister(meta, (phase) =>
-                  b.setButtonText(phase === "downloading" ? "Downloading…" : "Processing…"),
-                );
+                await this.plugin.downloadAndRegister(meta, (phase) => {
+                  b.setButtonText(phase === "downloading" ? "Downloading…" : "Processing…");
+                });
               } catch (e) {
                 console.error("Daily Bible Verse: download failed", e);
                 new Notice("Daily Bible Verse: download failed — check your internet connection.");

@@ -96,6 +96,8 @@ export default class DailyBibleVersePlugin extends Plugin {
   private poolCache: { key: string; info: PoolInfo } | null = null;
   private poolPromise: { key: string; promise: Promise<PoolInfo> } | null = null;
   private idleReleaseTimer: number | null = null;
+  /** Set in onunload: async renders finishing later must not start new timers. */
+  private unloaded = false;
 
   async onload(): Promise<void> {
     await this.loadPluginData();
@@ -110,6 +112,7 @@ export default class DailyBibleVersePlugin extends Plugin {
   }
 
   onunload(): void {
+    this.unloaded = true;
     if (this.idleReleaseTimer !== null) window.clearTimeout(this.idleReleaseTimer);
     this.idleReleaseTimer = null;
   }
@@ -195,6 +198,8 @@ export default class DailyBibleVersePlugin extends Plugin {
    * pool keys stay cached, so a later render only reloads the text file. */
   private scheduleIdleRelease(): void {
     if (this.idleReleaseTimer !== null) window.clearTimeout(this.idleReleaseTimer);
+    this.idleReleaseTimer = null;
+    if (this.unloaded) return;
     this.idleReleaseTimer = window.setTimeout(() => {
       this.idleReleaseTimer = null;
       for (const provider of this.downloadedProviders.values()) provider.release();
