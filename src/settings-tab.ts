@@ -1,4 +1,4 @@
-import { App, debounce, Notice, PluginSettingTab, Setting } from "obsidian";
+import { App, debounce, Notice, PluginSettingTab, Setting, type ButtonComponent } from "obsidian";
 import { appHasDailyNotesPluginLoaded } from "obsidian-daily-notes-interface";
 import { CURATED } from "./core/curated";
 import { newSeed } from "./core/hash";
@@ -34,6 +34,8 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
   /** Keeps the custom-emoji field visible while its value still matches a
    * preset (right after the user picks "Custom…"). */
   private forceCustomEmoji = false;
+  /** Whether the "More options" section is expanded (survives re-renders). */
+  private moreOpen = false;
   /** Text fields save debounced instead of on every keystroke (each save
    * rewrites data.json and triggers a sync). */
   private pendingSave = false;
@@ -99,19 +101,22 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
         });
       });
 
-    new Setting(containerEl)
-      .setName("Translation")
-      .setDesc("All bundled translations are public domain.")
-      .addDropdown((dd) => {
-        for (const t of translationsForLanguage(s.language)) dd.addOption(t.id, t.displayName);
-        dd.setValue(s.translationId).onChange(async (value) => {
-          s.translationId = value;
-          this.plugin.invalidatePoolCache();
-          this.plugin.evictUnusedDownloadedProviders();
-          await this.plugin.savePluginData();
-          this.display();
+    // Only a real choice deserves a row (es/fr/it ship one translation).
+    if (translationsForLanguage(s.language).length > 1) {
+      new Setting(containerEl)
+        .setName("Translation")
+        .setDesc("All bundled translations are public domain.")
+        .addDropdown((dd) => {
+          for (const t of translationsForLanguage(s.language)) dd.addOption(t.id, t.displayName);
+          dd.setValue(s.translationId).onChange(async (value) => {
+            s.translationId = value;
+            this.plugin.invalidatePoolCache();
+            this.plugin.evictUnusedDownloadedProviders();
+            await this.plugin.savePluginData();
+            this.display();
+          });
         });
-      });
+    }
 
     new Setting(containerEl)
       .setName("Verse pool")
@@ -232,6 +237,30 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Show translation name")
+      .setDesc("Adds an attribution line like “— Luther 1912” to the callout.")
+      .addToggle((t) =>
+        t.setValue(s.showTranslationName).onChange(async (value) => {
+          s.showTranslationName = value;
+          await this.plugin.savePluginData();
+        }),
+      );
+
+    // ---- More options (progressive disclosure) --------------------------
+
+    const details = containerEl.createEl("details", { cls: "daily-bible-verse-more" });
+    details.open = this.moreOpen;
+    details.addEventListener("toggle", () => {
+      this.moreOpen = details.open;
+    });
+    details.createEl("summary", { text: "More options" });
+    this.renderMoreOptions(details);
+  }
+
+  private renderMoreOptions(containerEl: HTMLElement): void {
+    const s = this.plugin.settings;
+
+    new Setting(containerEl)
       .setName("Callout type")
       .setDesc('The [!type] used in the callout (letters, digits, dashes). Empty or "bible" gets the plugin\'s book styling.')
       .addText((t) =>
@@ -245,16 +274,6 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
             s.calloutType = type;
             this.queueSave();
           }),
-      );
-
-    new Setting(containerEl)
-      .setName("Show translation name")
-      .setDesc("Adds an attribution line like “— Luther 1912” to the callout.")
-      .addToggle((t) =>
-        t.setValue(s.showTranslationName).onChange(async (value) => {
-          s.showTranslationName = value;
-          await this.plugin.savePluginData();
-        }),
       );
 
     new Setting(containerEl)
@@ -272,9 +291,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
           }),
       );
 
-    // ---- Advanced ------------------------------------------------------
-
-    new Setting(containerEl).setName("Advanced").setHeading();
+    new Setting(containerEl).setName("Reset").setHeading();
 
     new Setting(containerEl)
       .setName("Reset shuffle seed")
@@ -282,7 +299,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
         "Generates a new random order for the daily verses. The current and future verses change; past notes keep their text.",
       )
       .addButton((b) =>
-        b.setButtonText("Reset").onClick(async () => {
+        this.confirmButton(b, "Reset", async () => {
           // No pool rebuild needed: the deck cache is keyed by seed.
           this.plugin.settings.baseSeed = newSeed();
           await this.plugin.savePluginData();
@@ -294,12 +311,36 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
       .setName("Clear re-roll overrides")
       .setDesc("Forgets manual re-rolls; affected days return to their deck verse.")
       .addButton((b) =>
-        b.setButtonText("Clear").onClick(async () => {
+        this.confirmButton(b, "Clear", async () => {
           this.plugin.overrides = {};
           await this.plugin.savePluginData();
           new Notice("Daily Bible Verse: overrides cleared.");
         }),
       );
+  }
+
+  /** Destructive button: first click arms it ("Click again to confirm"),
+   * a second click within 3 s runs the action. */
+  private confirmButton(b: ButtonComponent, label: string, action: () => Promise<void>): void {
+    let armedUntil = 0;
+    let timer = 0;
+    b.setButtonText(label)
+      .setWarning()
+      .onClick(async () => {
+        if (Date.now() > armedUntil) {
+          armedUntil = Date.now() + 3000;
+          b.setButtonText("Click again to confirm");
+          window.clearTimeout(timer);
+          timer = window.setTimeout(() => {
+            if (b.buttonEl.isConnected) b.setButtonText(label);
+          }, 3000);
+          return;
+        }
+        armedUntil = 0;
+        window.clearTimeout(timer);
+        b.setButtonText(label);
+        await action();
+      });
   }
 
   // ---- sections --------------------------------------------------------

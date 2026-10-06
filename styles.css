@@ -40,3 +40,14 @@
 .daily-bible-verse-invalid {
   border-color: var(--background-modifier-error) !important;
 }
+
+.daily-bible-verse-more > summary {
+  cursor: pointer;
+  padding: var(--size-4-3) 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.daily-bible-verse-more[open] > summary {
+  color: var(--text-normal);
+}
