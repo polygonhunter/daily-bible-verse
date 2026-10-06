@@ -31,52 +31,57 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
   plugin.addCommand({
     id: "reroll-todays-verse",
     name: "Re-roll today's verse",
-    callback: () => rerollAndUpdate(plugin),
+    checkCallback: (checking) => {
+      // Offered without an active file or in a Markdown note — not while a
+      // PDF, canvas or image is focused.
+      const active = plugin.app.workspace.getActiveFile();
+      if (active && active.extension !== "md") return false;
+      if (!checking) void rerollAndUpdate(plugin);
+      return true;
+    },
   });
 
   plugin.addCommand({
     id: "replace-bible-verse-placeholders",
     name: "Replace {{bible-verse}} placeholders in the active note",
-    callback: async () => {
-      const file = plugin.app.workspace.getActiveFile();
-      if (!file) {
-        new Notice("Daily Bible Verse: no active note.");
-        return;
+    editorCheckCallback: (checking, editor, ctx) => {
+      const file = ctx.file;
+      if (!file) return false;
+      const content = editor.getValue();
+      if (content.includes(MARKER) || !hasPlaceholder(content)) return false;
+      if (!checking) {
+        void (async () => {
+          const rendered = await plugin.renderForDate(plugin.dateForFile(file) ?? new Date());
+          plugin.notifyFallback(rendered);
+          await insertCallout(plugin.app, file, rendered.markdown, plugin.settings.insertPosition);
+        })();
       }
-      const content = await plugin.app.vault.read(file);
-      if (content.includes(MARKER)) {
-        new Notice("Daily Bible Verse: this note already has a verse.");
-        return;
-      }
-      if (!hasPlaceholder(content)) {
-        new Notice("Daily Bible Verse: no {{bible-verse}} placeholder found.");
-        return;
-      }
-      const rendered = await plugin.renderForDate(plugin.dateForFile(file) ?? new Date());
-      plugin.notifyFallback(rendered);
-      await insertCallout(plugin.app, file, rendered.markdown, plugin.settings.insertPosition);
+      return true;
     },
   });
 
   plugin.addCommand({
     id: "download-translation",
     name: "Download current translation for whole-Bible mode",
-    callback: async () => {
+    checkCallback: (checking) => {
+      if (plugin.settings.poolMode === "curated") return false;
       const meta = translationById(plugin.settings.translationId);
-      if (!meta) {
-        new Notice("Daily Bible Verse: unknown translation selected.");
-        return;
+      if (!meta) return false;
+      if (!checking) {
+        void (async () => {
+          new Notice(`Daily Bible Verse: downloading ${meta.displayName} (~4-5 MB)…`);
+          try {
+            const result = await plugin.downloadAndRegister(meta);
+            new Notice(
+              `Daily Bible Verse: ${meta.displayName} downloaded (${result.verseCount.toLocaleString()} verses).`,
+            );
+          } catch (e) {
+            console.error("Daily Bible Verse: download failed", e);
+            new Notice("Daily Bible Verse: download failed — check your internet connection.");
+          }
+        })();
       }
-      new Notice(`Daily Bible Verse: downloading ${meta.displayName} (~4-5 MB)…`);
-      try {
-        const result = await plugin.downloadAndRegister(meta);
-        new Notice(
-          `Daily Bible Verse: ${meta.displayName} downloaded (${result.verseCount.toLocaleString()} verses).`,
-        );
-      } catch (e) {
-        console.error("Daily Bible Verse: download failed", e);
-        new Notice("Daily Bible Verse: download failed — check your internet connection.");
-      }
+      return true;
     },
   });
 }
