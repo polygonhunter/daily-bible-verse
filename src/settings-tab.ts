@@ -423,7 +423,8 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
       .then((available) => {
         if (!setting.settingEl.isConnected || this.plugin.settings.translationId !== id) return;
         const downloaded = this.plugin.downloadedTranslations[id];
-        if (available) {
+        const damaged = available && this.plugin.isTranslationUnreadable(id);
+        if (available && !damaged) {
           setting.setDesc(
             downloaded
               ? `${name}: downloaded (${downloaded.verseCount.toLocaleString()} verses, ${(downloaded.sizeBytes / 1024 / 1024).toFixed(1)} MB).`
@@ -441,13 +442,15 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
           return;
         }
         setting.setDesc(
-          downloaded
+          damaged
+            ? `${name}: the downloaded file is damaged and cannot be read. Download it again; until then the curated pool is used.`
+            : downloaded
             ? `${name}: downloaded on another device, but not on this one yet. Until then the curated pool is used here.`
             : `${name}: not downloaded yet. Whole-Bible mode needs a one-time download (~4-5 MB); until then the curated pool is used.`,
         );
         setting.addButton((b) =>
           b
-            .setButtonText("Download now")
+            .setButtonText(damaged ? "Download again" : "Download now")
             .setCta()
             .onClick(async () => {
               if (!meta) return;

@@ -97,6 +97,9 @@ export default class DailyBibleVersePlugin extends Plugin {
   private poolCache: { key: string; info: PoolInfo } | null = null;
   private poolPromise: { key: string; promise: Promise<PoolInfo> } | null = null;
   private idleReleaseTimer: number | null = null;
+  /** Translations whose downloaded file exists but failed to load (e.g. a
+   * truncated file from 1.0.6, which did not write atomically). */
+  private readonly unreadableTranslations = new Set<string>();
   /** Set in onunload: async renders finishing later must not start new timers. */
   private unloaded = false;
 
@@ -240,6 +243,7 @@ export default class DailyBibleVersePlugin extends Plugin {
       bookVerseCounts: result.bookVerseCounts,
     };
     this.downloadedTranslations[meta.id] = entry;
+    this.unreadableTranslations.delete(meta.id);
     this.downloadedProviders.set(
       meta.id,
       DownloadedProvider.fromStored(this.app, translationFilePath(this.manifestDir(), meta.id), result.stored),
@@ -266,6 +270,7 @@ export default class DailyBibleVersePlugin extends Plugin {
   /** After a download or deletion the cached provider/pool must be dropped. */
   resetDownloadedProvider(translationId: string): void {
     this.downloadedProviders.delete(translationId);
+    this.unreadableTranslations.delete(translationId);
     this.invalidatePoolCache();
   }
 
@@ -324,6 +329,7 @@ export default class DailyBibleVersePlugin extends Plugin {
         .getIndex()
         .catch((e) => {
           console.warn("Daily Bible Verse: downloaded translation is unreadable — using the curated pool", e);
+          this.unreadableTranslations.add(translationId);
           return null;
         });
       if (!index) {
@@ -494,8 +500,19 @@ export default class DailyBibleVersePlugin extends Plugin {
     }
   }
 
+  /** True when the downloaded file of `translationId` exists but could not
+   * be loaded (known only after a load attempt). */
+  isTranslationUnreadable(translationId: string): boolean {
+    return this.unreadableTranslations.has(translationId);
+  }
+
   notifyFallback(rendered: RenderedVerse): void {
-    if (rendered.usedFallbackPool && this.settings.poolMode !== "curated") {
+    if (!rendered.usedFallbackPool || this.settings.poolMode === "curated") return;
+    if (this.unreadableTranslations.has(this.settings.translationId)) {
+      new Notice(
+        "Daily Bible Verse: the downloaded translation file is damaged — using the curated verse pool. Download it again in the plugin settings.",
+      );
+    } else {
       new Notice(
         "Daily Bible Verse: this translation is not downloaded on this device yet — using the curated verse pool. Download it in the plugin settings.",
       );
