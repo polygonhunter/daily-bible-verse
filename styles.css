@@ -9,12 +9,14 @@
 
 /* Per-theme tone so the callout title meets WCAG AA contrast (4.5:1) on the
    default light and dark backgrounds; the base value above stays the
-   fallback for themes without these classes. */
-.theme-light .callout[data-callout="bible"] {
+   fallback for themes without these classes. :where() keeps the
+   specificity at that of the base rule, so user snippets that set
+   --callout-color on .callout[data-callout="bible"] still win. */
+:where(.theme-light) .callout[data-callout="bible"] {
   --callout-color: 128, 100, 30;
 }
 
-.theme-dark .callout[data-callout="bible"] {
+:where(.theme-dark) .callout[data-callout="bible"] {
   --callout-color: 196, 164, 92;
 }
 
