@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 — 2026-10-10
 
 ### Fixed
 - Re-roll no longer pulls in the verse of one of the coming days (it used to be exactly
