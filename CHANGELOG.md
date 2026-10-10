@@ -18,8 +18,25 @@
   synced, the downloaded file usually is not). Downloads are written atomically.
 - Callout types with spaces or brackets are rejected instead of breaking the callout
   (underscores, umlauts and metadata such as `infobox|left` stay allowed).
+- Re-roll updates the verse callout in the active note again (e.g. a verse inserted at
+  the cursor in a project note), as in 1.0.x; without one it updates today's daily note.
+- A date-named note outside the daily-notes folder (`Meetings/2026-10-06.md`) is no longer
+  treated as a daily note by re-roll, "Insert at cursor" and the placeholder command.
+- Auto-insert keeps working when a template moves or renames the new daily note
+  (`tp.file.move` / `tp.file.rename`) and when a note is deleted and re-created at once.
+  A daily note created during a slow (mobile) start is no longer skipped.
+- The placeholder command replaces a freshly typed, unsaved `{{bible-verse}}` in the
+  editor (undoable) instead of inserting a second verse from the saved file.
+- A damaged downloaded translation file is reported as such; the settings offer
+  *Download again*. Deleting a translation also removes a leftover `.tmp` file.
+- Commands show a notice when they fail instead of failing silently.
+- Settings edits made while a synced change arrives are no longer lost.
+- Your own CSS snippets for the callout colour win over the per-theme colours again.
+- Re-roll avoids the verses of the next 30 days in small pools as well.
 
 ### Performance
+- The startup check for today's daily note looks up the note by path instead of scanning
+  the daily-notes folder, and is skipped when auto-insert is off.
 - data.json is only written when something changed; external changes (sync) are picked
   up via `onExternalSettingsChange`.
 - Text fields in the settings save debounced instead of on every keystroke.
