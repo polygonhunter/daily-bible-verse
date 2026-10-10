@@ -16,7 +16,8 @@
   leaving unhandled rejections, and also handles a daily note created during startup.
 - The download status in the settings reflects the file on *this* device (data.json is
   synced, the downloaded file usually is not). Downloads are written atomically.
-- Invalid callout types (spaces, brackets) are rejected instead of breaking the callout.
+- Callout types with spaces or brackets are rejected instead of breaking the callout
+  (underscores, umlauts and metadata such as `infobox|left` stay allowed).
 
 ### Performance
 - data.json is only written when something changed; external changes (sync) are picked

@@ -52,9 +52,16 @@ describe("normalizeCalloutType", () => {
     expect(normalizeCalloutType("")).toBe("");
   });
 
+  it("accepts underscores, umlauts and callout metadata", () => {
+    expect(normalizeCalloutType("verse_of_day")).toBe("verse_of_day");
+    expect(normalizeCalloutType("bibelvers-ü")).toBe("bibelvers-ü");
+    expect(normalizeCalloutType("infobox|left")).toBe("infobox|left");
+  });
+
   it("rejects types that break the callout syntax", () => {
     expect(normalizeCalloutType("bad type")).toBeNull();
     expect(normalizeCalloutType("x]")).toBeNull();
-    expect(normalizeCalloutType("a|b")).toBeNull();
+    expect(normalizeCalloutType("[x")).toBeNull();
+    expect(normalizeCalloutType("a\nb")).toBeNull();
   });
 });

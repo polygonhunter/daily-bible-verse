@@ -21,11 +21,12 @@ export interface RenderInput {
 
 /** Validates a user-entered callout type. Returns the trimmed type, "" for an
  * empty input (= default "bible"), or null when it contains characters that
- * would break the `> [!type]` syntax (spaces, brackets, …). */
+ * would break the `> [!type]` syntax (brackets, whitespace). Anything else is
+ * allowed — underscores, umlauts and theme metadata such as `infobox|left`. */
 export function normalizeCalloutType(input: string): string | null {
   const t = input.trim();
   if (t === "") return "";
-  return /^[a-z0-9-]+$/i.test(t) ? t : null;
+  return /^[^[\]\s]+$/u.test(t) ? t : null;
 }
 
 /** Emits the static markdown callout that gets written into notes. */

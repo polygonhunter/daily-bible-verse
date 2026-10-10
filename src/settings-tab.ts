@@ -275,7 +275,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Callout type")
-      .setDesc('The [!type] used in the callout (letters, digits, dashes). Empty or "bible" gets the plugin\'s book styling.')
+      .setDesc('The [!type] used in the callout (no spaces or brackets). Empty or "bible" gets the plugin\'s book styling.')
       .addText((t) =>
         t
           .setPlaceholder("bible")
