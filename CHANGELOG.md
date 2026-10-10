@@ -39,9 +39,10 @@
 ### Added
 - *Show today's verse*: command `show-todays-verse` and a ribbon icon open the verse in a
   window with Re-roll, Copy and Insert into daily note.
-- *Complete sentences* (whole-Bible / books mode, on by default): a verse that ends
-  mid-sentence is continued with the following verses of the same chapter (max. 4).
-  Display only — the daily order is unchanged.
+- *Complete sentences* (whole-Bible / books mode): a verse that ends mid-sentence is
+  continued with the following verses of the same chapter (max. 4). Display only — the
+  daily order is unchanged. On by default for new installs; existing setups keep their
+  current verses until you turn it on in the settings.
 - Public API `app.plugins.plugins["daily-bible-verse"].api.getVerse(date?)`.
 - Optional *Reference property*: writes the verse reference into the note's frontmatter.
 - Book presets: Wisdom books, Prophets, Letters of Paul.

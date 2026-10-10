@@ -46,3 +46,14 @@ export const DEFAULT_SETTINGS: DailyBibleVerseSettings = {
   referenceProperty: "",
   baseSeed: "",
 };
+
+/** Stored settings merged over the defaults. Settings saved by a version
+ * without "Complete sentences" (≤ 1.0.6) keep that version's behaviour —
+ * otherwise the update would silently change the verse texts and references
+ * (and two synced devices on different versions would disagree). Fresh
+ * installs (no stored settings) get the new default. */
+export function mergeStoredSettings(stored: Partial<DailyBibleVerseSettings>): DailyBibleVerseSettings {
+  const merged = { ...DEFAULT_SETTINGS, ...stored };
+  if (!Object.prototype.hasOwnProperty.call(stored, "completeSentences")) merged.completeSentences = false;
+  return merged;
+}

@@ -25,7 +25,7 @@ import { DownloadedProvider } from "./providers/downloaded-provider";
 import type { VerseTextProvider } from "./providers/provider";
 import { DailyBibleVerseSettingTab } from "./settings-tab";
 import { VerseModal } from "./verse-modal";
-import { DEFAULT_SETTINGS, type DailyBibleVerseSettings } from "./settings";
+import { DEFAULT_SETTINGS, mergeStoredSettings, type DailyBibleVerseSettings } from "./settings";
 
 export interface DownloadedTranslationMeta {
   downloadedAt: string;
@@ -123,7 +123,7 @@ export default class DailyBibleVersePlugin extends Plugin {
   private async loadPluginData(): Promise<void> {
     const raw = (await this.loadData()) as Partial<PluginData> | null;
     const firstRun = !raw?.settings;
-    this.settings = { ...DEFAULT_SETTINGS, ...(raw?.settings ?? {}) };
+    this.settings = raw?.settings ? mergeStoredSettings(raw.settings) : { ...DEFAULT_SETTINGS };
     this.overrides = raw?.overrides ?? {};
     this.downloadedTranslations = raw?.downloadedTranslations ?? {};
 
@@ -144,7 +144,7 @@ export default class DailyBibleVersePlugin extends Plugin {
   async onExternalSettingsChange(): Promise<void> {
     const raw = (await this.loadData()) as Partial<PluginData> | null;
     if (!raw?.settings) return;
-    this.settings = { ...DEFAULT_SETTINGS, ...raw.settings };
+    this.settings = mergeStoredSettings(raw.settings);
     this.overrides = raw.overrides ?? {};
     this.downloadedTranslations = raw.downloadedTranslations ?? {};
     this.invalidatePoolCache();
