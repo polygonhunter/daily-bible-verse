@@ -90,7 +90,9 @@ export async function deleteDownloadedTranslation(
   translationId: string,
 ): Promise<void> {
   const path = translationFilePath(manifestDir, translationId);
-  if (await app.vault.adapter.exists(path)) {
-    await app.vault.adapter.remove(path);
+  // Also the leftover of a download interrupted between write and rename
+  // (~5 MB) — a new download would overwrite it, a deletion must remove it.
+  for (const p of [path, `${path}.tmp`]) {
+    if (await app.vault.adapter.exists(p)) await app.vault.adapter.remove(p);
   }
 }
