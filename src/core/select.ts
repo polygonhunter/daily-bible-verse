@@ -66,6 +66,12 @@ export function rerollRefForDay(
       const key = candidate(i);
       if (accept(key)) return { refKey: key, rerollCount };
     }
+    // Small pools: the past-day walk may not reach every verse. Before
+    // relaxing a constraint, try every pool verse (deterministic order).
+    for (let i = 0; i < n; i++) {
+      const key = poolKeys[(start + i) % n];
+      if (accept(key)) return { refKey: key, rerollCount };
+    }
   }
   return { refKey: today, rerollCount };
 }

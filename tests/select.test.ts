@@ -45,6 +45,23 @@ describe("rerollRefForDay", () => {
     }
   });
 
+  it("small pools: avoids the coming days whenever a valid verse exists", () => {
+    for (let n = 4; n < 40; n++) {
+      const p = Array.from({ length: n }, (_, i) => `1:1:${i + 1}-${i + 1}`);
+      const horizon = Math.min(30, n - 3);
+      for (const seed of ["a", "b", "c"]) {
+        for (let day = 0; day < 2 * n; day += 3) {
+          const today = pickForDay(p, day, seed);
+          const upcoming = new Set<string>();
+          for (let j = 1; j <= horizon; j++) upcoming.add(pickForDay(p, day + j, seed));
+          const valid = (k: string) => k !== today && !upcoming.has(k);
+          if (!p.some(valid)) continue;
+          expect(valid(rerollRefForDay(p, day, seed, 0).refKey)).toBe(true);
+        }
+      }
+    }
+  });
+
   it("handles tiny pools without throwing", () => {
     expect(rerollRefForDay(["1:1:1-1"], 3, "s", 0).refKey).toBe("1:1:1-1");
     const two = ["1:1:1-1", "1:1:2-2"];
