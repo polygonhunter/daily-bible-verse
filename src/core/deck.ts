@@ -65,7 +65,7 @@ function getDeck(poolKeys: readonly string[], baseSeed: string, cycle: number): 
   // Keep at most a handful of cycles per pool (cycle transitions at most once
   // a day, so this never grows in practice).
   if (entry.decks.size > 4) {
-    const oldest = entry.decks.keys().next().value;
+    const oldest = entry.decks.keys().next().value as string | undefined;
     if (oldest !== undefined) entry.decks.delete(oldest);
   }
   return deck;
