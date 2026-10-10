@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyToContent, findMarkerCallout, hasPlaceholder, replaceMarkerCallout } from "../src/core/insert-logic";
+import { applyToContent, findMarkerCallout, hasPlaceholder, minimalEdit, replaceMarkerCallout } from "../src/core/insert-logic";
 import { MARKER, renderCallout } from "../src/core/renderer";
 
 const callout = renderCallout({
@@ -156,5 +156,36 @@ describe("findMarkerCallout", () => {
 
   it("returns null without a marker callout", () => {
     expect(findMarkerCallout(["> just a quote", "text"])).toBeNull();
+  });
+});
+
+describe("minimalEdit", () => {
+  const apply = (s: string, e: { from: number; to: number; text: string } | null) =>
+    e ? s.slice(0, e.from) + e.text + s.slice(e.to) : s;
+
+  it("returns null for identical content", () => {
+    expect(minimalEdit("abc", "abc")).toBeNull();
+  });
+
+  it("replaces only the placeholder", () => {
+    const before = "# Tag\n\n{{bible-verse}}\n\nRest";
+    const after = applyToContent(before, "> [!bible] X", "top").content;
+    const edit = minimalEdit(before, after);
+    expect(edit).not.toBeNull();
+    expect(edit!.from).toBe(before.indexOf("{{"));
+    expect(apply(before, edit)).toBe(after);
+  });
+
+  it("handles inserts at the start and end and repeated characters", () => {
+    for (const [b, a] of [
+      ["", "x"],
+      ["abc", "xabc"],
+      ["abc", "abcx"],
+      ["aaaa", "aaaaaa"],
+      ["abab", "ab"],
+      ["x\n\n", "x\n\n> c\n"],
+    ]) {
+      expect(apply(b, minimalEdit(b, a))).toBe(a);
+    }
   });
 });

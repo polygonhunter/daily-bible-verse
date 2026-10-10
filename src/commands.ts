@@ -1,9 +1,8 @@
 import { Notice } from "obsidian";
 import { insertIntoTodaysDailyNote, rerollAndUpdate } from "./actions";
-import { hasPlaceholder } from "./core/insert-logic";
+import { applyToContent, hasPlaceholder, minimalEdit } from "./core/insert-logic";
 import { MARKER } from "./core/renderer";
 import { translationById } from "./core/translations";
-import { insertCallout } from "./inserter";
 import type DailyBibleVersePlugin from "./main";
 
 /** Command IDs are a public contract (frozen since 1.0.0) so external tools —
@@ -63,8 +62,14 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
         (async () => {
           const rendered = await plugin.renderForDate(plugin.dateForFile(file) ?? new Date());
           plugin.notifyFallback(rendered);
-          const action = await insertCallout(plugin.app, file, rendered.markdown, plugin.settings.insertPosition);
-          if (action !== "already-present") await plugin.applyReferenceProperty(file, rendered.reference);
+          // Through the editor: the check above saw the editor buffer, which
+          // may hold a freshly typed, not yet saved placeholder. Undoable.
+          const before = editor.getValue();
+          const result = applyToContent(before, rendered.markdown, plugin.settings.insertPosition);
+          const edit = minimalEdit(before, result.content);
+          if (!edit) return;
+          editor.replaceRange(edit.text, editor.offsetToPos(edit.from), editor.offsetToPos(edit.to));
+          await plugin.applyReferenceProperty(file, rendered.reference);
         })().catch((e) => reportFailure("replace the placeholder", e));
       }
       return true;

@@ -86,3 +86,21 @@ export function replaceMarkerCallout(content: string, newCallout: string): strin
   const replaced = [...lines.slice(0, span.start), newCallout, ...lines.slice(span.end + 1)];
   return replaced.join("\n");
 }
+
+/** Smallest single edit turning `before` into `after`: the differing middle
+ * part between the common prefix and suffix. Lets an editor apply a content
+ * transform as one targeted change (cursor and undo stay sensible). */
+export function minimalEdit(before: string, after: string): { from: number; to: number; text: string } | null {
+  if (before === after) return null;
+  let start = 0;
+  const max = Math.min(before.length, after.length);
+  while (start < max && before.charCodeAt(start) === after.charCodeAt(start)) start++;
+  let end = 0;
+  while (
+    end < max - start &&
+    before.charCodeAt(before.length - 1 - end) === after.charCodeAt(after.length - 1 - end)
+  ) {
+    end++;
+  }
+  return { from: start, to: before.length - end, text: after.slice(start, after.length - end) };
+}
