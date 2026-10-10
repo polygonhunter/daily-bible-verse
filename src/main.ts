@@ -144,7 +144,9 @@ export default class DailyBibleVersePlugin extends Plugin {
   async onExternalSettingsChange(): Promise<void> {
     const raw = (await this.loadData()) as Partial<PluginData> | null;
     if (!raw?.settings) return;
-    this.settings = mergeStoredSettings(raw.settings);
+    // Update in place: an open settings tab holds a reference to this
+    // object, and its edits must not land in a discarded copy.
+    Object.assign(this.settings, mergeStoredSettings(raw.settings));
     this.overrides = raw.overrides ?? {};
     this.downloadedTranslations = raw.downloadedTranslations ?? {};
     this.invalidatePoolCache();
