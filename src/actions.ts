@@ -7,6 +7,7 @@ import {
 } from "obsidian-daily-notes-interface";
 import { localDateKey } from "./core/date";
 import { findMarkerCallout } from "./core/insert-logic";
+import { MARKER } from "./core/renderer";
 import { insertCallout, replaceCallout } from "./inserter";
 import type DailyBibleVersePlugin from "./main";
 
@@ -22,13 +23,29 @@ export interface RerollTarget {
   date: Date;
 }
 
-/** Re-roll target: the active daily note (its own date) — otherwise today's
- * daily note — otherwise nothing to update, just today's stored verse. */
-export function resolveRerollTarget(plugin: DailyBibleVersePlugin): RerollTarget {
+/** Re-roll target: the active daily note (its own date) — otherwise another
+ * active note that holds a verse callout (e.g. inserted at the cursor in a
+ * project note; today's date, as in 1.0.x) — otherwise today's daily note —
+ * otherwise nothing to update, just today's stored verse. */
+export async function resolveRerollTarget(plugin: DailyBibleVersePlugin): Promise<RerollTarget> {
   const active = plugin.app.workspace.getActiveFile();
   const activeDate = plugin.dateForFile(active);
   if (active && activeDate) return { file: active, date: activeDate };
+  if (active?.extension === "md" && (await activeContent(plugin, active)).includes(MARKER)) {
+    return { file: active, date: new Date() };
+  }
   return { file: plugin.todaysDailyNote(), date: new Date() };
+}
+
+/** Content of the active note — from the editor when open (may be unsaved). */
+async function activeContent(plugin: DailyBibleVersePlugin, file: TFile): Promise<string> {
+  const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+  if (view?.file?.path === file.path) return view.editor.getValue();
+  try {
+    return await plugin.app.vault.cachedRead(file);
+  } catch {
+    return "";
+  }
 }
 
 /** "today" or the note's date, for notices. */
@@ -62,10 +79,8 @@ export async function replaceVerseInFile(
 
 /** Re-rolls the verse for `target` (default: resolved from the workspace) and
  * updates the note's callout. */
-export async function rerollAndUpdate(
-  plugin: DailyBibleVersePlugin,
-  target: RerollTarget = resolveRerollTarget(plugin),
-): Promise<void> {
+export async function rerollAndUpdate(plugin: DailyBibleVersePlugin, explicitTarget?: RerollTarget): Promise<void> {
+  const target = explicitTarget ?? (await resolveRerollTarget(plugin));
   const rendered = await plugin.rerollForDate(target.date);
   const label = dayLabel(target.date);
   const replaced = target.file ? await replaceVerseInFile(plugin, target.file, rendered.markdown) : false;
