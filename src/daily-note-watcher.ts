@@ -27,7 +27,10 @@ const moment = obsidianMoment as unknown as typeof import("moment");
  * Templater may overwrite the note after creation (possibly after a prompt
  * that takes a while), so besides two timed attempts the watcher listens to
  * `modify` of exactly this file for 60 s: whenever the verse marker vanished,
- * the idempotent insert runs again. It stops after the first such re-insert. */
+ * the idempotent insert runs again. It stops after the first such re-insert.
+ *
+ * The watcher keeps the TFile object, not its path: a template that moves or
+ * renames the note (tp.file.move / tp.file.rename) must not lose the verse. */
 export class DailyNoteWatcher {
   private static readonly ATTEMPT_DELAYS_MS = [0, 1500];
   private static readonly WATCH_WINDOW_MS = 60_000;
@@ -121,13 +124,13 @@ export class DailyNoteWatcher {
     }
 
     for (const delay of DailyNoteWatcher.ATTEMPT_DELAYS_MS) {
-      this.setTimer(() => void this.attempt(file.path, verse), delay);
+      this.setTimer(() => void this.attempt(file, verse), delay);
     }
-    this.watchForOverwrites(file.path, verse);
+    this.watchForOverwrites(file, verse);
   }
 
   /** Re-inserts after a template plugin replaced the content. */
-  private watchForOverwrites(path: string, verse: { markdown: string; reference: string }): void {
+  private watchForOverwrites(file: TFile, verse: { markdown: string; reference: string }): void {
     const vault = this.plugin.app.vault;
     let scheduled = false;
     let ref: EventRef | null = null;
@@ -140,12 +143,12 @@ export class DailyNoteWatcher {
       this.watches.delete(stop);
     };
     ref = vault.on("modify", (f) => {
-      if (f.path !== path || scheduled) return;
+      if (f !== file || scheduled) return;
       scheduled = true;
       // Bundle bursts of modify events into one attempt.
       void Promise.resolve().then(async () => {
         scheduled = false;
-        const action = await this.attempt(path, verse);
+        const action = await this.attempt(file, verse);
         if (action === "inserted" || action === "placeholder") stop();
       });
     });
@@ -155,12 +158,12 @@ export class DailyNoteWatcher {
 
   /** One idempotent insert attempt. Never throws. */
   private async attempt(
-    path: string,
+    file: TFile,
     verse: { markdown: string; reference: string },
   ): Promise<InsertAction | null> {
     if (this.unloaded) return null;
-    const file = this.plugin.app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof TFile)) return null; // deleted or renamed meanwhile
+    // Deleted meanwhile? (A rename keeps the object and updates file.path.)
+    if (this.plugin.app.vault.getAbstractFileByPath(file.path) !== file) return null;
     try {
       // Cheap pre-check: no write (and thus no own modify event) when the
       // verse is already there.
