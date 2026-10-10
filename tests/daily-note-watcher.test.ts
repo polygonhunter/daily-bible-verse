@@ -120,6 +120,19 @@ describe("DailyNoteWatcher", () => {
     expect(markers(env.contents.get(f))).toBe(1);
   });
 
+  it("handles a note deleted and re-created under the same path", async () => {
+    const env = setup();
+    env.watcher.start();
+    env.ready();
+    const path = `Daily/${todayName()}.md`;
+    const first = env.create(path);
+    await vi.advanceTimersByTimeAsync(0);
+    env.remove(first);
+    const second = env.create(path);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(markers(env.contents.get(second))).toBe(1);
+  });
+
   it("ignores date-named notes outside the daily-notes folder", async () => {
     const env = setup();
     env.watcher.start();

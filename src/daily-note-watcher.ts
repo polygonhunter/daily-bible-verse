@@ -39,7 +39,9 @@ export class DailyNoteWatcher {
 
   private readonly timers = new Set<number>();
   private readonly watches = new Set<() => void>();
-  private readonly handled = new Set<string>();
+  /** Per file object, so a note deleted and re-created under the same path
+   * is handled again. */
+  private readonly handled = new WeakSet<TFile>();
   private unloaded = false;
 
   constructor(private readonly plugin: DailyBibleVersePlugin) {}
@@ -103,11 +105,10 @@ export class DailyNoteWatcher {
   }
 
   private async onCreate(file: TAbstractFile): Promise<void> {
-    if (this.unloaded || this.handled.has(file.path)) return;
+    if (this.unloaded || !(file instanceof TFile) || this.handled.has(file)) return;
     const noteDate = this.qualifyingDate(file);
-    if (!noteDate || !(file instanceof TFile)) return;
-    this.handled.add(file.path);
-    this.setTimer(() => this.handled.delete(file.path), DailyNoteWatcher.WATCH_WINDOW_MS);
+    if (!noteDate) return;
+    this.handled.add(file);
 
     // The note's date drives the verse: creating yesterday's note late at
     // night yields yesterday's verse.
