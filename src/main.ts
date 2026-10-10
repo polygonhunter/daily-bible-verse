@@ -1,7 +1,8 @@
 import { getLanguage, moment as obsidianMoment, Notice, Plugin, type TFile } from "obsidian";
-import { getAllDailyNotes, getDailyNote, getDateFromFile } from "obsidian-daily-notes-interface";
+import { getAllDailyNotes, getDailyNote, getDailyNoteSettings, getDateFromFile } from "obsidian-daily-notes-interface";
 import { BOOK_NAMES } from "./core/booknames";
 import { CURATED } from "./core/curated";
+import { isInDailyNotesFolder } from "./core/daily-note-rules";
 import { dateKeyToDayIndex, daysSinceEpochLocal, localDateKey } from "./core/date";
 import { BOOK_PRESETS, buildCuratedPool, buildWholeBiblePool, poolSizeFromCounts } from "./core/pool";
 import { newSeed } from "./core/hash";
@@ -453,10 +454,14 @@ export default class DailyBibleVersePlugin extends Plugin {
   // ---- daily-note helpers -----------------------------------------------
 
   /** The date of a daily note (per the Daily/Periodic Notes format), or null
-   * for any other file or when no daily-notes plugin is configured. */
+   * for any other file or when no daily-notes plugin is configured. A
+   * date-named file outside the daily-notes folder (`Meetings/2026-10-06.md`)
+   * is not a daily note. */
   dateForFile(file: TFile | null): Date | null {
     if (!file || file.extension !== "md") return null;
     try {
+      const settings = getDailyNoteSettings();
+      if (!isInDailyNotesFolder(file.path, settings?.folder, settings?.format || "YYYY-MM-DD")) return null;
       const m = getDateFromFile(file, "day");
       return m ? m.toDate() : null;
     } catch {
