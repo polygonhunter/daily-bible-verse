@@ -14,11 +14,15 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
     id: "insert-todays-verse",
     name: "Insert today's verse at cursor",
     editorCallback: async (editor, ctx) => {
-      // In a daily note the note's own date decides the verse.
-      const date = plugin.dateForFile(ctx.file) ?? new Date();
-      const rendered = await plugin.renderForDate(date);
-      plugin.notifyFallback(rendered);
-      editor.replaceSelection(`${rendered.markdown}\n`);
+      try {
+        // In a daily note the note's own date decides the verse.
+        const date = plugin.dateForFile(ctx.file) ?? new Date();
+        const rendered = await plugin.renderForDate(date);
+        plugin.notifyFallback(rendered);
+        editor.replaceSelection(`${rendered.markdown}\n`);
+      } catch (e) {
+        reportFailure("insert the verse", e);
+      }
     },
   });
 
@@ -42,7 +46,7 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
       // PDF, canvas or image is focused.
       const active = plugin.app.workspace.getActiveFile();
       if (active && active.extension !== "md") return false;
-      if (!checking) void rerollAndUpdate(plugin);
+      if (!checking) rerollAndUpdate(plugin).catch((e) => reportFailure("re-roll the verse", e));
       return true;
     },
   });
@@ -56,12 +60,12 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
       const content = editor.getValue();
       if (content.includes(MARKER) || !hasPlaceholder(content)) return false;
       if (!checking) {
-        void (async () => {
+        (async () => {
           const rendered = await plugin.renderForDate(plugin.dateForFile(file) ?? new Date());
           plugin.notifyFallback(rendered);
           const action = await insertCallout(plugin.app, file, rendered.markdown, plugin.settings.insertPosition);
           if (action !== "already-present") await plugin.applyReferenceProperty(file, rendered.reference);
-        })();
+        })().catch((e) => reportFailure("replace the placeholder", e));
       }
       return true;
     },
@@ -91,4 +95,10 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
       return true;
     },
   });
+}
+
+/** Logs a failed command and tells the user instead of failing silently. */
+function reportFailure(what: string, e: unknown): void {
+  console.error(`Daily Bible Verse: could not ${what}`, e);
+  new Notice(`Daily Bible Verse: could not ${what} — see the developer console.`);
 }
