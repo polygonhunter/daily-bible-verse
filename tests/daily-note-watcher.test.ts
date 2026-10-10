@@ -133,6 +133,31 @@ describe("DailyNoteWatcher", () => {
     expect(markers(env.contents.get(second))).toBe(1);
   });
 
+  it("startup check: picks up today's note created during a slow start", async () => {
+    const env = setup();
+    env.watcher.start();
+    // Note created at plugin load, layout-ready only 30 s later.
+    const f = new TFile(`Daily/${todayName()}.md`);
+    env.files.set(f.path, f);
+    env.contents.set(f, "");
+    await vi.advanceTimersByTimeAsync(30_000);
+    env.ready();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(markers(env.contents.get(f))).toBe(1);
+  });
+
+  it("startup check does nothing when auto-insert is off", async () => {
+    const env = setup();
+    env.plugin.settings.autoInsertOnDailyNote = false;
+    env.watcher.start();
+    const f = new TFile(`Daily/${todayName()}.md`);
+    env.files.set(f.path, f);
+    env.contents.set(f, "");
+    env.ready();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(markers(env.contents.get(f))).toBe(0);
+  });
+
   it("ignores date-named notes outside the daily-notes folder", async () => {
     const env = setup();
     env.watcher.start();

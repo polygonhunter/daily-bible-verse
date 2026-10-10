@@ -1,12 +1,6 @@
-import { moment as obsidianMoment, Notice, TFile, type EventRef, type TAbstractFile } from "obsidian";
-import {
-  appHasDailyNotesPluginLoaded,
-  getAllDailyNotes,
-  getDailyNote,
-  getDailyNoteSettings,
-  getDateFromFile,
-} from "obsidian-daily-notes-interface";
-import { isInDailyNotesFolder, isWithinDayWindow } from "./core/daily-note-rules";
+import { moment as obsidianMoment, normalizePath, Notice, TFile, type EventRef, type TAbstractFile } from "obsidian";
+import { appHasDailyNotesPluginLoaded, getDailyNoteSettings, getDateFromFile } from "obsidian-daily-notes-interface";
+import { isInDailyNotesFolder, isWithinDayWindow, normalizeFolder } from "./core/daily-note-rules";
 import { daysSinceEpochLocal } from "./core/date";
 import type { InsertAction } from "./core/insert-logic";
 import { MARKER } from "./core/renderer";
@@ -42,6 +36,7 @@ export class DailyNoteWatcher {
   /** Per file object, so a note deleted and re-created under the same path
    * is handled again. */
   private readonly handled = new WeakSet<TFile>();
+  private readonly loadedAt = Date.now();
   private unloaded = false;
 
   constructor(private readonly plugin: DailyBibleVersePlugin) {}
@@ -63,11 +58,19 @@ export class DailyNoteWatcher {
     });
   }
 
+  /** Looks up today's note by its expected path (no folder scan) and only
+   * when auto-insert is on. A slow (mobile) start may take longer than the
+   * freshness window until layout-ready, so notes created since the plugin
+   * loaded count as fresh here. */
   private checkTodaysNoteFromStartup(): void {
+    if (!this.plugin.settings.autoInsertOnDailyNote) return;
     try {
       if (!appHasDailyNotesPluginLoaded()) return;
-      const file = getDailyNote(moment(), getAllDailyNotes());
-      if (file) void this.onCreate(file);
+      const settings = getDailyNoteSettings();
+      const name = moment().format(settings?.format || "YYYY-MM-DD");
+      const folder = normalizeFolder(settings?.folder);
+      const file = this.plugin.app.vault.getAbstractFileByPath(normalizePath(folder ? `${folder}/${name}.md` : `${name}.md`));
+      if (file) void this.onCreate(file, this.loadedAt - DailyNoteWatcher.FRESH_FILE_WINDOW_MS);
     } catch {
       // Daily-notes folder missing or plugin not configured — nothing to do.
     }
@@ -83,10 +86,10 @@ export class DailyNoteWatcher {
   }
 
   /** Returns the note date when `file` qualifies for auto-insert, else null. */
-  private qualifyingDate(file: TAbstractFile): Date | null {
+  private qualifyingDate(file: TAbstractFile, freshSince: number): Date | null {
     if (!(file instanceof TFile) || file.extension !== "md") return null;
     if (!this.plugin.settings.autoInsertOnDailyNote) return null;
-    if (Date.now() - file.stat.ctime > DailyNoteWatcher.FRESH_FILE_WINDOW_MS) return null;
+    if (file.stat.ctime < freshSince) return null;
     try {
       if (!appHasDailyNotesPluginLoaded()) return null;
       const settings = getDailyNoteSettings();
@@ -104,9 +107,12 @@ export class DailyNoteWatcher {
     }
   }
 
-  private async onCreate(file: TAbstractFile): Promise<void> {
+  private async onCreate(
+    file: TAbstractFile,
+    freshSince = Date.now() - DailyNoteWatcher.FRESH_FILE_WINDOW_MS,
+  ): Promise<void> {
     if (this.unloaded || !(file instanceof TFile) || this.handled.has(file)) return;
-    const noteDate = this.qualifyingDate(file);
+    const noteDate = this.qualifyingDate(file, freshSince);
     if (!noteDate) return;
     this.handled.add(file);
 
