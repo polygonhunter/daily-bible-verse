@@ -1,4 +1,4 @@
-import { MarkdownView, moment as obsidianMoment, Notice, type TFile } from "obsidian";
+import { MarkdownView, Notice, type TFile } from "obsidian";
 import {
   appHasDailyNotesPluginLoaded,
   createDailyNote,
@@ -8,9 +8,7 @@ import { findMarkerCallout } from "./core/insert-logic";
 import { MARKER } from "./core/renderer";
 import { insertCallout, replaceCallout } from "./inserter";
 import type DailyBibleVersePlugin from "./main";
-
-// Obsidian's moment export is typed as a namespace; cast once to call it.
-const moment = obsidianMoment as unknown as typeof import("moment");
+import { moment } from "./moment";
 
 /** User-facing actions shared by commands, the verse modal and the API. */
 

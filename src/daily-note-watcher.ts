@@ -1,14 +1,11 @@
-import { moment as obsidianMoment, normalizePath, Notice, TFile, type EventRef, type TAbstractFile } from "obsidian";
+import { Notice, TFile, type EventRef, type TAbstractFile } from "obsidian";
 import { appHasDailyNotesPluginLoaded, getDailyNoteSettings, getDateFromFile } from "obsidian-daily-notes-interface";
-import { isInDailyNotesFolder, isWithinDayWindow, normalizeFolder } from "./core/daily-note-rules";
+import { isInDailyNotesFolder, isWithinDayWindow } from "./core/daily-note-rules";
 import { daysSinceEpochLocal } from "./core/date";
 import type { InsertAction } from "./core/insert-logic";
 import { MARKER } from "./core/renderer";
 import { insertCallout } from "./inserter";
 import type DailyBibleVersePlugin from "./main";
-
-// Obsidian's moment export is typed as a namespace; cast once to call it.
-const moment = obsidianMoment as unknown as typeof import("moment");
 
 /** Auto-inserts the daily verse when a daily note is created.
  *
@@ -66,10 +63,7 @@ export class DailyNoteWatcher {
     if (!this.plugin.settings.autoInsertOnDailyNote) return;
     try {
       if (!appHasDailyNotesPluginLoaded()) return;
-      const settings = getDailyNoteSettings();
-      const name = moment().format(settings?.format || "YYYY-MM-DD");
-      const folder = normalizeFolder(settings?.folder);
-      const file = this.plugin.app.vault.getAbstractFileByPath(normalizePath(folder ? `${folder}/${name}.md` : `${name}.md`));
+      const file = this.plugin.app.vault.getAbstractFileByPath(this.plugin.todaysDailyNotePath());
       if (file) void this.onCreate(file, this.loadedAt - DailyNoteWatcher.FRESH_FILE_WINDOW_MS);
     } catch {
       // Daily-notes folder missing or plugin not configured — nothing to do.

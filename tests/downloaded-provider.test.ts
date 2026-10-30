@@ -57,6 +57,41 @@ describe("DownloadedProvider", () => {
     expect(buildWholeBiblePool(index!, [19])).toHaveLength(2);
   });
 
+  it("keeps the translation's own numbering for references", () => {
+    expect(makeProvider().sourceRef("19:46:1-1")).toBe("19:46:1-1");
+  });
+
+  it("finishes a download interrupted between remove and rename", async () => {
+    const path = "plugins/daily-bible-verse/translations/luther1912.json";
+    const files = new Map([[`${path}.tmp`, JSON.stringify(stored)]]);
+    const fakeApp = {
+      vault: {
+        adapter: {
+          exists: async (p: string) => files.has(p),
+          read: async (p: string) => files.get(p) ?? "",
+          rename: async (from: string, to: string) => {
+            files.set(to, files.get(from) ?? "");
+            files.delete(from);
+          },
+        },
+      },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = new DownloadedProvider(fakeApp as any, path, "luther1912");
+    expect(await p.isAvailable()).toBe(true);
+    expect([...files.keys()]).toEqual([path]);
+    expect(await p.getText("43:3:16-16")).toBe("Also hat Gott die Welt geliebt.");
+  });
+
+  it("ignores a truncated temp file", async () => {
+    const path = "x.json";
+    const fakeApp = {
+      vault: { adapter: { exists: async (p: string) => p === `${path}.tmp`, read: async () => '{"schemaVer' } },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(await new DownloadedProvider(fakeApp as any, path, "luther1912").isAvailable()).toBe(false);
+  });
+
   it("rejects corrupt files", async () => {
     const bad = { ...stored, translationId: "other" };
     await expect(makeProvider(true, bad).getText("43:3:16-16")).rejects.toThrow(/Corrupt/);

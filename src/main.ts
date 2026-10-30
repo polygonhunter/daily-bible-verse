@@ -1,8 +1,8 @@
-import { getLanguage, moment as obsidianMoment, Notice, Plugin, type TFile } from "obsidian";
+import { getLanguage, normalizePath, Notice, Plugin, TFile } from "obsidian";
 import { getAllDailyNotes, getDailyNote, getDailyNoteSettings, getDateFromFile } from "obsidian-daily-notes-interface";
 import { BOOK_NAMES } from "./core/booknames";
 import { CURATED } from "./core/curated";
-import { isInDailyNotesFolder } from "./core/daily-note-rules";
+import { isInDailyNotesFolder, normalizeFolder } from "./core/daily-note-rules";
 import { dateKeyToDayIndex, daysSinceEpochLocal, localDateKey } from "./core/date";
 import { BOOK_PRESETS, buildCuratedPool, buildWholeBiblePool, poolSizeFromCounts } from "./core/pool";
 import { newSeed } from "./core/hash";
@@ -24,6 +24,7 @@ import { BundledProvider } from "./providers/bundled-provider";
 import { DownloadedProvider } from "./providers/downloaded-provider";
 import type { VerseTextProvider } from "./providers/provider";
 import { DailyBibleVerseSettingTab } from "./settings-tab";
+import { moment } from "./moment";
 import { VerseModal } from "./verse-modal";
 import { DEFAULT_SETTINGS, mergeStoredSettings, type DailyBibleVerseSettings } from "./settings";
 
@@ -45,6 +46,8 @@ interface PluginData {
 export interface RenderedVerse {
   markdown: string;
   reference: string;
+  /** Deck key (curated numbering for the curated pool); `reference` names
+   * the verses in the translation's own numbering. */
   refKey: RefKey;
   /** Plain verse text (may contain newlines). */
   text: string;
@@ -76,9 +79,6 @@ export interface DailyBibleVerseApi {
 const OVERRIDE_RETENTION_DAYS = 60;
 /** Downloaded texts (~5-10 MB in memory) are freed after this idle time. */
 const PROVIDER_IDLE_RELEASE_MS = 120_000;
-
-// Obsidian's moment export is typed as a namespace; cast once to call it.
-const moment = obsidianMoment as unknown as typeof import("moment");
 
 export default class DailyBibleVersePlugin extends Plugin {
   settings: DailyBibleVerseSettings = { ...DEFAULT_SETTINGS };
@@ -408,12 +408,14 @@ export default class DailyBibleVersePlugin extends Plugin {
       this.scheduleIdleRelease();
     }
 
-    return { ...this.renderVerse(refKey, text), usedFallbackPool: pool.usedFallback };
+    return { ...this.renderVerse(refKey, text, provider.sourceRef(refKey)), usedFallbackPool: pool.usedFallback };
   }
 
-  private renderVerse(refKey: RefKey, text: string): Omit<RenderedVerse, "usedFallbackPool"> {
+  /** `sourceKey` is the range in the translation's own numbering; reference
+   * and link name it, while `refKey` (deck and overrides) stays curated. */
+  private renderVerse(refKey: RefKey, text: string, sourceKey: RefKey): Omit<RenderedVerse, "usedFallbackPool"> {
     const s = this.settings;
-    const range = parseRefKey(refKey);
+    const range = parseRefKey(sourceKey);
     const reference = formatReference(range, BOOK_NAMES[s.language]);
     const markdown = renderCallout({
       reference,
@@ -477,9 +479,21 @@ export default class DailyBibleVersePlugin extends Plugin {
     }
   }
 
-  /** Today's existing daily note, or null. Never creates one. */
+  /** Where the Daily/Periodic Notes plugin puts today's note. */
+  todaysDailyNotePath(): string {
+    const settings = getDailyNoteSettings();
+    const name = moment().format(settings?.format || "YYYY-MM-DD");
+    const folder = normalizeFolder(settings?.folder);
+    return normalizePath(folder ? `${folder}/${name}.md` : `${name}.md`);
+  }
+
+  /** Today's existing daily note, or null. Never creates one. Looks at the
+   * expected path first; only a note moved elsewhere in the daily-notes
+   * folder needs the folder scan. */
   todaysDailyNote(): TFile | null {
     try {
+      const file = this.app.vault.getAbstractFileByPath(this.todaysDailyNotePath());
+      if (file instanceof TFile) return file;
       return getDailyNote(moment(), getAllDailyNotes()) ?? null;
     } catch {
       return null;

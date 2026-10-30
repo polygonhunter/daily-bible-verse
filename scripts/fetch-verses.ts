@@ -85,6 +85,8 @@ const SPOT_CHECKS: Record<string, Array<{ key: string; mustContain: string }>> =
 interface TranslationResult {
   meta: TranslationMeta;
   texts: Record<string, string>;
+  /** Curated key -> range actually read, for every key that differs. */
+  refs: Record<string, string>;
   /** "book:chapter" -> { delta, refs affected } for review. */
   shifted: Map<string, { delta: number; refs: string[] }>;
   missing: string[];
@@ -97,6 +99,7 @@ function loadBible(bebliaFile: string): ParsedBible {
 
 function extract(meta: TranslationMeta, bible: ParsedBible, kjv: ParsedBible): TranslationResult {
   const texts: Record<string, string> = {};
+  const refs: Record<string, string> = {};
   const shifted = new Map<string, { delta: number; refs: string[] }>();
   const missing: string[] = [];
   const post = POST_PROCESS[meta.id] ?? ((t: string) => t);
@@ -139,9 +142,13 @@ function extract(meta: TranslationMeta, bible: ParsedBible, kjv: ParsedBible): T
     }
     if (parts.length === verseEnd - verseStart + 1) {
       texts[key] = parts.join(" ").trim();
+      // The displayed reference must name the verses the text carries in
+      // THIS translation (Luther's Psalm 46:2 is the KJV's 46:1).
+      const source = refKey({ book, chapter, verseStart: verseStart + delta, verseEnd: verseEnd + delta });
+      if (source !== key) refs[key] = source;
     }
   }
-  return { meta, texts, shifted, missing };
+  return { meta, texts, refs, shifted, missing };
 }
 
 /** Cross-translation length audit: a verse whose (normalized) length is far
@@ -224,6 +231,9 @@ async function main(): Promise<void> {
       source: `beblia:${r.meta.bebliaFile}`,
       texts: Object.fromEntries(Object.entries(r.texts).sort(([a], [b]) => a.localeCompare(b))),
     };
+    if (Object.keys(r.refs).length > 0) {
+      out.refs = Object.fromEntries(Object.entries(r.refs).sort(([a], [b]) => a.localeCompare(b)));
+    }
     mkdirSync(join(root, "data/generated"), { recursive: true });
     writeFileSync(
       join(root, `data/generated/texts.${r.meta.id}.json`),

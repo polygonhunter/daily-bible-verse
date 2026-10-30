@@ -145,7 +145,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
             s.bookPreset = value;
             this.plugin.invalidatePoolCache();
             await this.plugin.savePluginData();
-            void this.refreshPoolCount();
+            this.refreshPoolCountSafely();
           });
         });
     }
@@ -166,7 +166,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
 
     const poolInfo = new Setting(containerEl).setName("Your current pool");
     this.poolCountEl = poolInfo.descEl;
-    void this.refreshPoolCount();
+    this.refreshPoolCountSafely();
 
     // ---- Insertion -----------------------------------------------------
 
@@ -398,7 +398,7 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
               : s.selectedThemes.filter((x) => x !== theme);
             this.plugin.invalidatePoolCache();
             await this.plugin.savePluginData();
-            void this.refreshPoolCount();
+            this.refreshPoolCountSafely();
           }),
         );
     }
@@ -431,10 +431,15 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
           );
           setting.addButton((b) =>
             b.setButtonText("Delete").onClick(async () => {
-              await deleteDownloadedTranslation(this.app, this.plugin.manifestDir(), id);
-              delete this.plugin.downloadedTranslations[id];
-              this.plugin.resetDownloadedProvider(id);
-              await this.plugin.savePluginData();
+              try {
+                await deleteDownloadedTranslation(this.app, this.plugin.manifestDir(), id);
+                delete this.plugin.downloadedTranslations[id];
+                this.plugin.resetDownloadedProvider(id);
+                await this.plugin.savePluginData();
+              } catch (e) {
+                console.error("Daily Bible Verse: could not delete the downloaded translation", e);
+                new Notice("Daily Bible Verse: could not delete the download — see the developer console.");
+              }
               this.display();
             }),
           );
@@ -466,6 +471,13 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
             }),
         );
       });
+  }
+
+  /** Fire-and-forget wrapper: a failed lookup leaves the counter as it is. */
+  private refreshPoolCountSafely(): void {
+    this.refreshPoolCount().catch((e) => {
+      console.error("Daily Bible Verse: could not count the verse pool", e);
+    });
   }
 
   private async refreshPoolCount(): Promise<void> {

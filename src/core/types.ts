@@ -55,6 +55,11 @@ export interface GeneratedTextsFile {
   translationId: string;
   source: string;
   texts: Record<RefKey, string>;
+  /** Curated (KJV-versified) key -> the range the text was read from in this
+   * translation, only where the two differ (e.g. German Psalm superscriptions
+   * count as verse 1). Keys stay curated for deck and overrides; references
+   * and links are formatted from this range. */
+  refs?: Record<RefKey, RefKey>;
 }
 
 /** Map of chapter -> number of verses, per book. Used for whole-Bible pools. */

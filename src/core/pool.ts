@@ -12,9 +12,12 @@ export function buildCuratedPool(
   return refs.filter((r) => r.themes.some((t) => selected.has(t))).map(refKey);
 }
 
-/** Single-verse pool enumerated from the verses actually present in a
- * downloaded translation — versification differences can never produce a
- * missing verse this way. An empty book selection means "whole Bible". */
+/** Single-verse pool enumerated from the per-chapter verse counts of a
+ * downloaded translation. A few sources skip verse numbers inside a chapter
+ * (6 in Darby, Acts 15:34 in Elberfelder 1905); such a key has no text, and
+ * renderForDate's backward fallback covers those days. The pool stays as it
+ * is on purpose — changing it would reshuffle every user's deck. An empty
+ * book selection means "whole Bible". */
 export function buildWholeBiblePool(
   index: TranslationIndex,
   selectedBooks: readonly number[],

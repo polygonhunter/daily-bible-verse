@@ -58,7 +58,9 @@ export async function downloadTranslation(
   await writeAtomically(app, translationFilePath(manifestDir, meta.id), json);
   return {
     verseCount: parsed.verses.size,
-    sizeBytes: new TextEncoder().encode(json).byteLength,
+    // UTF-16 length: within a few percent of the byte size for these texts,
+    // and no extra 5 MB copy at the moment memory peaks (matters on mobile).
+    sizeBytes: json.length,
     bookVerseCounts: bookVerseCountsFromIndex(stored.index),
     stored,
   };
@@ -66,7 +68,9 @@ export async function downloadTranslation(
 
 /** Writes to `<path>.tmp` first and renames afterwards, so an interrupted
  * write (app closed, disk full, mobile kill) never leaves a truncated file
- * that would later fail to parse. */
+ * that would later fail to parse. Interrupted between remove and rename,
+ * only the complete temp file is left; DownloadedProvider.isAvailable()
+ * finishes the rename. */
 async function writeAtomically(app: App, path: string, data: string): Promise<void> {
   const adapter = app.vault.adapter;
   const tmp = `${path}.tmp`;

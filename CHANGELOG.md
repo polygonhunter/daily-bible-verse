@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- German translations (Luther 1912, Elberfelder 1905): the reference now names the verse
+  numbers of the translation itself. 56 curated verses — mostly Psalms whose
+  superscription counts as verse 1, plus Hosea 14 and Jonah 2 — showed the English
+  numbering, e.g. "Psalm 46,1" for Luther's Psalm 46,2. The link template's `{chapter}`
+  and `{verse}` follow. The daily order and stored re-rolls are unchanged.
+- Automatic insertion keeps Templater folder templates: a new, still empty daily note is
+  left alone at first, because Templater only applies a folder template to an empty note.
+- The insert position "Very top" is gone — it put the verse above the frontmatter and
+  turned the note's properties into text. Notes set to it now insert after the
+  frontmatter.
+- "Insert today's verse at cursor" keeps the surrounding lines intact: the callout starts
+  on its own line, and text after the cursor is no longer pulled into it.
+- "Insert today's verse into today's daily note" works when the daily-notes folder does
+  not exist yet and reports errors instead of failing silently.
+- The placeholder command no longer writes into another note when the pane switched
+  notes while the verse was loading.
+- A download interrupted at the very end (app closed between replacing the old file and
+  renaming the new one) is completed on the next start instead of showing "not
+  downloaded".
+- Deleting a downloaded translation reports errors instead of failing silently.
+
+### Performance
+- Commands and the verse window find today's daily note by its expected path instead of
+  scanning the daily-notes folder.
+- A download no longer makes an extra copy of the 5 MB file just to measure its size.
+
 ## 1.1.0 — 2026-10-10
 
 ### Fixed

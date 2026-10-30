@@ -18,4 +18,11 @@ export class BundledProvider implements VerseTextProvider {
   async getText(key: RefKey): Promise<string | null> {
     return this.file.texts[key] ?? null;
   }
+
+  /** Curated keys are KJV-versified; some translations number the same text
+   * differently (German Psalm superscriptions count as verse 1). */
+  sourceRef(key: RefKey): RefKey {
+    const refs = this.file.refs;
+    return refs && Object.prototype.hasOwnProperty.call(refs, key) ? refs[key] : key;
+  }
 }

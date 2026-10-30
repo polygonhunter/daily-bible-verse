@@ -57,6 +57,7 @@ function setup() {
     renderForDate: async () => ({ markdown: verse, reference: "Johannes 3,16", usedFallbackPool: false }),
     notifyFallback: () => {},
     applyReferenceProperty: async () => {},
+    todaysDailyNotePath: () => `Daily/${todayName()}.md`,
   };
   const watcher = new DailyNoteWatcher(plugin as never);
   const create = (path: string, content = "") => {

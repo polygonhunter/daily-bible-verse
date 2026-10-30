@@ -38,7 +38,27 @@ export class DownloadedProvider implements VerseTextProvider {
   }
 
   async isAvailable(): Promise<boolean> {
-    return this.app.vault.adapter.exists(this.filePath);
+    if (await this.app.vault.adapter.exists(this.filePath)) return true;
+    return this.recoverInterruptedWrite();
+  }
+
+  /** A download killed between removing the old file and renaming the new
+   * one leaves only `<file>.tmp`. The rename only starts once that write has
+   * finished, so a temp file that parses as this translation is complete:
+   * finish the rename instead of reporting "not downloaded". */
+  private async recoverInterruptedWrite(): Promise<boolean> {
+    const adapter = this.app.vault.adapter;
+    const tmp = `${this.filePath}.tmp`;
+    try {
+      if (!(await adapter.exists(tmp))) return false;
+      const stored = JSON.parse(await adapter.read(tmp)) as StoredTranslation;
+      if (stored.schemaVersion !== 1 || stored.translationId !== this.translationId) return false;
+      await adapter.rename(tmp, this.filePath);
+      return true;
+    } catch {
+      // Truncated temp file (killed during the write itself) — not usable.
+      return false;
+    }
   }
 
   /** True while the verse texts are held in memory. */
@@ -108,5 +128,10 @@ export class DownloadedProvider implements VerseTextProvider {
       parts.push(verses[id]);
     }
     return parts.join(" ");
+  }
+
+  /** Whole-Bible keys already use this translation's own numbering. */
+  sourceRef(key: RefKey): RefKey {
+    return key;
   }
 }
