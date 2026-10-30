@@ -1,4 +1,4 @@
-import { Notice } from "obsidian";
+import { MarkdownView, Notice } from "obsidian";
 import { insertIntoTodaysDailyNote, rerollAndUpdate } from "./actions";
 import { applyToContent, hasPlaceholder, minimalEdit } from "./core/insert-logic";
 import { MARKER } from "./core/renderer";
@@ -18,7 +18,13 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
         const date = plugin.dateForFile(ctx.file) ?? new Date();
         const rendered = await plugin.renderForDate(date);
         plugin.notifyFallback(rendered);
-        editor.replaceSelection(`${rendered.markdown}\n`);
+        // A callout must start on its own line and needs a blank line after
+        // it — otherwise text behind the cursor is pulled into the quote.
+        const from = editor.getCursor("from");
+        const to = editor.getCursor("to");
+        const lead = editor.getLine(from.line).slice(0, from.ch).trim() ? "\n" : "";
+        const tail = editor.getLine(to.line).slice(to.ch).trim() ? "\n\n" : "\n";
+        editor.replaceSelection(`${lead}${rendered.markdown}${tail}`);
       } catch (e) {
         reportFailure("insert the verse", e);
       }
@@ -64,7 +70,11 @@ export function registerCommands(plugin: DailyBibleVersePlugin): void {
           plugin.notifyFallback(rendered);
           // Through the editor: the check above saw the editor buffer, which
           // may hold a freshly typed, not yet saved placeholder. Undoable.
+          // The first whole-Bible load can take a moment: if the pane showed
+          // another note meanwhile, this editor no longer holds `file`.
+          if (plugin.app.workspace.getActiveViewOfType(MarkdownView)?.file !== file) return;
           const before = editor.getValue();
+          if (!hasPlaceholder(before)) return;
           const result = applyToContent(before, rendered.markdown, plugin.settings.insertPosition);
           const edit = minimalEdit(before, result.content);
           if (!edit) return;

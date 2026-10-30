@@ -120,6 +120,30 @@ describe("DailyNoteWatcher", () => {
     expect(markers(env.contents.get(f))).toBe(1);
   });
 
+  it("leaves a new empty note alone until a Templater folder template had its chance", async () => {
+    const env = setup();
+    env.watcher.start();
+    env.ready();
+    const f = env.create(`Daily/${todayName()}.md`);
+    await vi.advanceTimersByTimeAsync(0);
+    // Templater applies folder templates only to an empty note (~300 ms).
+    expect(env.contents.get(f)).toBe("");
+    await vi.advanceTimersByTimeAsync(300);
+    env.overwrite(f, "# Heute\n");
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(env.contents.get(f)).toContain("# Heute");
+    expect(markers(env.contents.get(f))).toBe(1);
+  });
+
+  it("fills a note created with content (core template) right away", async () => {
+    const env = setup();
+    env.watcher.start();
+    env.ready();
+    const f = env.create(`Daily/${todayName()}.md`, "# Template\n");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(markers(env.contents.get(f))).toBe(1);
+  });
+
   it("handles a note deleted and re-created under the same path", async () => {
     const env = setup();
     env.watcher.start();
@@ -129,7 +153,7 @@ describe("DailyNoteWatcher", () => {
     await vi.advanceTimersByTimeAsync(0);
     env.remove(first);
     const second = env.create(path);
-    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(1500);
     expect(markers(env.contents.get(second))).toBe(1);
   });
 
@@ -142,7 +166,7 @@ describe("DailyNoteWatcher", () => {
     env.contents.set(f, "");
     await vi.advanceTimersByTimeAsync(30_000);
     env.ready();
-    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(1500);
     expect(markers(env.contents.get(f))).toBe(1);
   });
 

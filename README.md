@@ -62,7 +62,7 @@ Or install via [BRAT](https://github.com/TfTHacker/obsidian42-brat) with the rep
 
 With the core **Daily Notes** (or **Periodic Notes**) plugin enabled, every newly
 created daily note automatically receives the verse callout. The insert position is
-configurable (top / after frontmatter / bottom).
+configurable (top, below any frontmatter / bottom).
 
 Automatic insertion only touches a note when
 

@@ -55,5 +55,8 @@ export const DEFAULT_SETTINGS: DailyBibleVerseSettings = {
 export function mergeStoredSettings(stored: Partial<DailyBibleVerseSettings>): DailyBibleVerseSettings {
   const merged = { ...DEFAULT_SETTINGS, ...stored };
   if (!Object.prototype.hasOwnProperty.call(stored, "completeSentences")) merged.completeSentences = false;
+  // "Very top" is gone: it only differed from "after frontmatter" by breaking
+  // the frontmatter, and the dropdown has no option to show it anymore.
+  if (merged.insertPosition === "top") merged.insertPosition = "after-frontmatter";
   return merged;
 }

@@ -2,8 +2,6 @@ import { MarkdownView, moment as obsidianMoment, Notice, type TFile } from "obsi
 import {
   appHasDailyNotesPluginLoaded,
   createDailyNote,
-  getAllDailyNotes,
-  getDailyNote,
 } from "obsidian-daily-notes-interface";
 import { localDateKey } from "./core/date";
 import { findMarkerCallout } from "./core/insert-logic";
@@ -98,9 +96,19 @@ export async function insertIntoTodaysDailyNote(plugin: DailyBibleVersePlugin): 
     new Notice("Daily Bible Verse: the Daily Notes (or Periodic Notes) plugin is not enabled.");
     return;
   }
-  const today = moment();
-  let file: TFile | null = getDailyNote(today, getAllDailyNotes()) ?? null;
-  if (!file) file = (await createDailyNote(today)) ?? null;
+  try {
+    await insertAndOpen(plugin);
+  } catch (e) {
+    console.error("Daily Bible Verse: could not insert the verse into today's daily note", e);
+    new Notice("Daily Bible Verse: could not insert the verse — see the developer console.");
+  }
+}
+
+async function insertAndOpen(plugin: DailyBibleVersePlugin): Promise<void> {
+  // todaysDailyNote() tolerates a daily-notes folder that does not exist yet;
+  // createDailyNote then creates it.
+  let file: TFile | null = plugin.todaysDailyNote();
+  if (!file) file = (await createDailyNote(moment())) ?? null;
   if (!file) {
     new Notice("Daily Bible Verse: could not open or create today's daily note.");
     return;

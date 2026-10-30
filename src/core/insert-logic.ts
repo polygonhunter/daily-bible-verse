@@ -14,6 +14,9 @@ function replacePlaceholders(content: string, callout: string): string {
   return content.replace(new RegExp(PLACEHOLDER_SOURCE, "g"), () => callout);
 }
 
+/** "top" is a legacy alias of "after-frontmatter" (≤ 1.1.0 offered it as
+ * "Very top"): above the frontmatter the callout would turn the YAML block
+ * into plain text, so no position may ever go there. */
 export type InsertPosition = "after-frontmatter" | "top" | "bottom";
 
 export type InsertAction = "placeholder" | "inserted" | "already-present";
@@ -45,7 +48,7 @@ function insertAt(content: string, callout: string, position: InsertPosition): s
     if (content.length === 0) return `${callout}\n`;
     return `${content.replace(/(?:\r?\n)*$/, "")}\n\n${callout}\n`;
   }
-  const frontmatterEnd = position === "after-frontmatter" ? frontmatterEndIndex(content) : 0;
+  const frontmatterEnd = frontmatterEndIndex(content);
   const before = content.slice(0, frontmatterEnd);
   const beforeSeparator = before.length > 0 && !before.endsWith("\n") ? "\n" : "";
   const after = content.slice(frontmatterEnd).replace(/^(?:\r?\n)*/, "");

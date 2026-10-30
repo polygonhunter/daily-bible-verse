@@ -190,7 +190,6 @@ export class DailyBibleVerseSettingTab extends PluginSettingTab {
       .setDesc("Where the callout is inserted when no {{bible-verse}} placeholder exists.")
       .addDropdown((dd) => {
         dd.addOption("after-frontmatter", "Top (after frontmatter)");
-        dd.addOption("top", "Very top");
         dd.addOption("bottom", "Bottom");
         dd.setValue(s.insertPosition).onChange(async (value) => {
           s.insertPosition = value as typeof s.insertPosition;

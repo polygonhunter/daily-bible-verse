@@ -130,8 +130,11 @@ export class DailyNoteWatcher {
       return;
     }
 
+    // The immediate attempt leaves an empty note alone: Templater applies a
+    // folder template only while the note is still empty (it checks ~300 ms
+    // after creation). The later attempt fills a note that stayed empty.
     for (const delay of DailyNoteWatcher.ATTEMPT_DELAYS_MS) {
-      this.setTimer(() => void this.attempt(file, verse), delay);
+      this.setTimer(() => void this.attempt(file, verse, delay === 0), delay);
     }
     this.watchForOverwrites(file, verse);
   }
@@ -152,7 +155,7 @@ export class DailyNoteWatcher {
     ref = vault.on("modify", (f) => {
       if (f !== file || scheduled) return;
       scheduled = true;
-      // Bundle bursts of modify events into one attempt.
+      // attempt() is idempotent, so overlapping modify events are harmless.
       void Promise.resolve().then(async () => {
         scheduled = false;
         const action = await this.attempt(file, verse);
@@ -167,6 +170,7 @@ export class DailyNoteWatcher {
   private async attempt(
     file: TFile,
     verse: { markdown: string; reference: string },
+    skipIfEmpty = false,
   ): Promise<InsertAction | null> {
     if (this.unloaded) return null;
     // Deleted meanwhile? (A rename keeps the object and updates file.path.)
@@ -176,6 +180,7 @@ export class DailyNoteWatcher {
       // verse is already there.
       const content = await this.plugin.app.vault.cachedRead(file);
       if (content.includes(MARKER) || this.unloaded) return "already-present";
+      if (skipIfEmpty && content.trim() === "") return null;
       const action = await insertCallout(this.plugin.app, file, verse.markdown, this.plugin.settings.insertPosition);
       if (action !== "already-present" && !this.unloaded) {
         await this.plugin.applyReferenceProperty(file, verse.reference);
