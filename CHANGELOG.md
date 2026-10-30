@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.1 — 2026-10-30
 
 ### Fixed
 - German translations (Luther 1912, Elberfelder 1905): the reference now names the verse
